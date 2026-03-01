@@ -18,7 +18,7 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import * as fs from 'fs';
 import * as path from 'path';
-import { normalizePath, stripFilePrefix } from './utils';
+import { findProjectRoot, normalizePath, stripFilePrefix } from './utils';
 
 // Create a connection for the server, using Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
@@ -44,6 +44,7 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that this server supports code completion.
       completionProvider: {
         resolveProvider: true,
+        triggerCharacters: ['"', "'"],
       },
       // Tell the client that this server supports go to definition.
       definitionProvider: true,
@@ -156,10 +157,16 @@ function readControllersToCache(controllersDir: string, workspaceRoot: string) {
   }
 }
 
-async function getWorkspaceRoot(fallBackRoot = '.'): Promise<string> {
+async function getWorkspaceRoot(documentUri: string): Promise<string> {
   const workspaceFolders = (await connection.workspace.getWorkspaceFolders()) || [];
 
-  return workspaceFolders.length > 0 ? stripFilePrefix(workspaceFolders[0].uri) : fallBackRoot;
+  if (workspaceFolders.length > 0) {
+    return stripFilePrefix(workspaceFolders[0].uri);
+  }
+
+  const docDir = path.dirname(stripFilePrefix(documentUri));
+
+  return findProjectRoot(docDir);
 }
 
 connection.onDidChangeConfiguration((change) => {
@@ -224,7 +231,7 @@ connection.onDidChangeWatchedFiles((change) => {
   if (hasControllerChanges) {
     changes.forEach(async (change) => {
       const settings = await getDocumentSettings(change.uri);
-      const wsRoot = await getWorkspaceRoot();
+      const wsRoot = await getWorkspaceRoot(change.uri);
       const fullControllersPath = getFullControllersPath(settings.controllersDir, wsRoot);
       const relativeControllerPath = getRelativeControllerPath(change.uri, fullControllersPath);
       if (!relativeControllerPath) {
@@ -274,7 +281,7 @@ connection.onCompletion(async (textDocumentPosition: TextDocumentPositionParams)
   const settings = await getDocumentSettings(document.uri);
 
   // Get workspace root from document URI
-  const wsRoot = await getWorkspaceRoot(path.dirname(stripFilePrefix(document.uri)));
+  const wsRoot = await getWorkspaceRoot(document.uri);
 
   if (settings.controllersDir !== cachedControllersDir) {
     readControllersToCache(settings.controllersDir, wsRoot);
@@ -345,7 +352,7 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
   const settings = await getDocumentSettings(document.uri);
 
   if (settings.controllersDir !== cachedControllersDir) {
-    const wsRoot = await getWorkspaceRoot();
+    const wsRoot = await getWorkspaceRoot(document.uri);
     readControllersToCache(settings.controllersDir, wsRoot);
     cachedControllersDir = settings.controllersDir;
   }
