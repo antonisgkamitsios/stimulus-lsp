@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 import {
   createConnection,
   TextDocuments,
@@ -14,119 +17,23 @@ import {
   Location,
   FileChangeType,
 } from 'vscode-languageserver/node';
-
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import * as fs from 'fs';
-import * as path from 'path';
-import { findProjectRoot, normalizePath, stripFilePrefix } from './utils';
 
-// Create a connection for the server, using Node's IPC as a transport.
-// Also include all preview / proposed LSP features.
-const connection = createConnection(ProposedFeatures.all);
+import { ControllerInfo, StimulusSettings } from './types';
+import { normalizePath, stripFilePrefix } from './utils';
 
-// Create a simple text document manager.
-const documents = new TextDocuments(TextDocument);
-
-let hasConfigurationCapability = false;
-let hasWorkspaceFolderCapability = false;
-
-connection.onInitialize((params: InitializeParams) => {
-  const capabilities = params.capabilities;
-
-  // Does the client support the `workspace/configuration` request?
-  // If not, we fall back using global settings.
-  hasConfigurationCapability = Boolean(capabilities.workspace?.configuration);
-  hasWorkspaceFolderCapability = Boolean(capabilities.workspace?.workspaceFolders);
-
-  const result: InitializeResult = {
-    capabilities: {
-      textDocumentSync: TextDocumentSyncKind.Incremental,
-      // Tell the client that this server supports code completion.
-      completionProvider: {
-        resolveProvider: true,
-        triggerCharacters: ['"', "'"],
-      },
-      // Tell the client that this server supports go to definition.
-      definitionProvider: true,
-      diagnosticProvider: {
-        interFileDependencies: false,
-        workspaceDiagnostics: false,
-      },
-    },
-  };
-  if (hasWorkspaceFolderCapability) {
-    result.capabilities.workspace = {
-      workspaceFolders: {
-        supported: true,
-      },
-    };
-  }
-  return result;
-});
-
-connection.onInitialized(() => {
-  if (hasConfigurationCapability) {
-    // Register for all configuration changes.
-    connection.client.register(DidChangeConfigurationNotification.type, undefined);
-  }
-  if (hasWorkspaceFolderCapability) {
-    connection.workspace.onDidChangeWorkspaceFolders((_event) => {
-      connection.console.log('Workspace folder change event received.');
-    });
-  }
-});
-
-// The example settings
-interface StimulusSettings {
-  controllersDir: string;
-}
-
-// The global settings, used when the `workspace/configuration` request is not supported by the client.
-// Please note that this is not the case when using this server with the client provided in this example
-// but could happen with other clients.
 const defaultSettings: StimulusSettings = { controllersDir: './app/controllers' };
 let globalSettings: StimulusSettings = defaultSettings;
+let cachedControllersDir: string;
 
-// Cache the settings of all open documents
-const documentSettings = new Map<string, Thenable<StimulusSettings>>();
+const connection = createConnection(ProposedFeatures.all);
+const documents = new TextDocuments(TextDocument);
 
-interface ControllerInfo {
-  filePath: string;
-}
+let workspaceRoot: string;
 
-// Cache for controllers
-let cachedControllersDir = '';
 const cachedControllers = new Map<string, ControllerInfo>();
 
-function getRelativeControllerPath(fileUri: string, fullControllersPath: string): string | null {
-  try {
-    const filePath = stripFilePrefix(fileUri);
-
-    // Get relative path from controllers dir
-    const relativePath = path.relative(fullControllersPath, filePath);
-
-    return normalizePath(relativePath);
-  } catch (error) {
-    connection.console.log(`[readControllers] Error reading controllers: ${error}`);
-    return null;
-  }
-}
-
-function getFullControllersPath(controllersDir: string, workspaceRoot: string): string {
-  return path.isAbsolute(controllersDir) ? controllersDir : path.join(workspaceRoot, controllersDir);
-}
-
-function getControllerIdentifier(filePath: string): string {
-  const relativePath = normalizePath(filePath);
-  const withoutExtension = relativePath.replace(/\.[^.]*$/, '');
-  const withoutSuffix = withoutExtension.replace(/_controller$/, '');
-
-  const controllerName = withoutSuffix.replace(/\//g, '--').replace(/_/g, '-');
-
-  return controllerName;
-}
-
-function readControllersToCache(controllersDir: string, workspaceRoot: string) {
+function readControllersToCache(controllersDir: string) {
   const fullPath = path.isAbsolute(controllersDir) ? controllersDir : path.join(workspaceRoot, controllersDir);
 
   try {
@@ -157,60 +64,106 @@ function readControllersToCache(controllersDir: string, workspaceRoot: string) {
   }
 }
 
-async function getWorkspaceRoot(documentUri: string): Promise<string> {
-  const workspaceFolders = (await connection.workspace.getWorkspaceFolders()) || [];
+function getRelativeControllerPath(fileUri: string, fullControllersPath: string): string | null {
+  try {
+    const filePath = stripFilePrefix(fileUri);
 
-  if (workspaceFolders.length > 0) {
-    return stripFilePrefix(workspaceFolders[0].uri);
+    // Get relative path from controllers dir
+    const relativePath = path.relative(fullControllersPath, filePath);
+
+    return normalizePath(relativePath);
+  } catch (error) {
+    connection.console.log(`[readControllers] Error reading controllers: ${error}`);
+    return null;
   }
-
-  const docDir = path.dirname(stripFilePrefix(documentUri));
-
-  return findProjectRoot(docDir);
 }
 
-connection.onDidChangeConfiguration((change) => {
-  if (hasConfigurationCapability) {
-    // Reset all cached document settings
-    documentSettings.clear();
-  } else {
-    globalSettings = change.settings.stimulus || defaultSettings;
-  }
-  // Clear controller cache when settings change
-  cachedControllersDir = '';
-  // For now lets empty the cache entirely
-  cachedControllers.clear();
+function getFullControllersPath(controllersDir: string): string {
+  return path.isAbsolute(controllersDir) ? controllersDir : path.join(workspaceRoot, controllersDir);
+}
 
-  // Refresh the diagnostics since the `controllersDir` could have changed.
-  connection.languages.diagnostics.refresh();
-});
+function getControllerIdentifier(filePath: string): string {
+  const relativePath = normalizePath(filePath);
+  const withoutExtension = relativePath.replace(/\.[^.]*$/, '');
+  const withoutSuffix = withoutExtension.replace(/_controller$/, '');
 
-function getDocumentSettings(resource: string): Thenable<StimulusSettings> {
+  const controllerName = withoutSuffix.replace(/\//g, '--').replace(/_/g, '-');
+
+  return controllerName;
+}
+
+let hasConfigurationCapability = false;
+let hasWorkspaceFolderCapability = false;
+
+async function getSettings(): Promise<StimulusSettings> {
   if (!hasConfigurationCapability) {
-    return Promise.resolve(globalSettings);
+    return globalSettings;
   }
-  let result = documentSettings.get(resource);
-  if (!result) {
-    result = connection.workspace.getConfiguration({
-      scopeUri: resource,
-      section: 'stimulus',
-    });
-    documentSettings.set(resource, result);
+  const settings: StimulusSettings = await connection.workspace.getConfiguration({
+    section: 'stimulus',
+  });
+  return settings;
+}
+
+connection.onInitialize((params: InitializeParams) => {
+  const capabilities = params.capabilities;
+
+  // Does the client support the `workspace/configuration` request?
+  // If not, we fall back using global settings.
+  hasConfigurationCapability = Boolean(capabilities.workspace?.configuration);
+  hasWorkspaceFolderCapability = Boolean(capabilities.workspace?.workspaceFolders);
+
+  if (params.workspaceFolders && params.workspaceFolders.length > 0) {
+    workspaceRoot = params.workspaceFolders[0].uri;
+  } else if (params.rootUri) {
+    workspaceRoot = params.rootUri;
+  } else if (params.rootPath) {
+    workspaceRoot = params.rootPath;
+  }
+  workspaceRoot = stripFilePrefix(workspaceRoot);
+
+  const result: InitializeResult = {
+    capabilities: {
+      textDocumentSync: TextDocumentSyncKind.Incremental,
+      // Tell the client that this server supports code completion.
+      completionProvider: {
+        resolveProvider: true,
+        triggerCharacters: ['"', "'"],
+      },
+      // Tell the client that this server supports go to definition.
+      definitionProvider: true,
+      diagnosticProvider: {
+        interFileDependencies: false,
+        workspaceDiagnostics: false,
+      },
+    },
+  };
+  if (hasWorkspaceFolderCapability) {
+    result.capabilities.workspace = {
+      workspaceFolders: {
+        supported: true,
+      },
+    };
   }
   return result;
-}
-
-// Only keep settings for open documents
-documents.onDidClose((e) => {
-  documentSettings.delete(e.document.uri);
 });
 
-connection.languages.diagnostics.on(async (_params) => {
-  // Return empty diagnostics for now
-  return {
-    kind: DocumentDiagnosticReportKind.Full,
-    items: [],
-  } satisfies DocumentDiagnosticReport;
+connection.onInitialized(async () => {
+  if (hasConfigurationCapability) {
+    // Register for all configuration changes.
+    connection.client.register(DidChangeConfigurationNotification.type, undefined);
+  }
+  if (hasWorkspaceFolderCapability) {
+    connection.workspace.onDidChangeWorkspaceFolders((_event) => {
+      connection.console.log('Workspace folder change event received.');
+    });
+  }
+
+  const settings = await getSettings();
+  if (cachedControllersDir !== settings.controllersDir) {
+    readControllersToCache(settings.controllersDir);
+    cachedControllersDir = settings.controllersDir;
+  }
 });
 
 // The content of a text document has changed. This event is emitted
@@ -218,6 +171,21 @@ connection.languages.diagnostics.on(async (_params) => {
 documents.onDidChangeContent((_change) => {
   connection.console.log('onDidChangeContent');
   // Diagnostics will be provided through the diagnostics endpoint
+});
+
+connection.onDidChangeConfiguration(async (change) => {
+  if (!hasConfigurationCapability) {
+    globalSettings = change.settings.stimulus || defaultSettings;
+  }
+  const settings = await getSettings();
+  if (cachedControllersDir !== settings.controllersDir) {
+    cachedControllers.clear();
+    readControllersToCache(settings.controllersDir);
+    cachedControllersDir = settings.controllersDir;
+  }
+
+  // Refresh the diagnostics since the `controllersDir` could have changed.
+  connection.languages.diagnostics.refresh();
 });
 
 // Monitored files have changed in VSCode
@@ -230,9 +198,8 @@ connection.onDidChangeWatchedFiles((change) => {
 
   if (hasControllerChanges) {
     changes.forEach(async (change) => {
-      const settings = await getDocumentSettings(change.uri);
-      const wsRoot = await getWorkspaceRoot(change.uri);
-      const fullControllersPath = getFullControllersPath(settings.controllersDir, wsRoot);
+      const settings = await getSettings();
+      const fullControllersPath = getFullControllersPath(settings.controllersDir);
       const relativeControllerPath = getRelativeControllerPath(change.uri, fullControllersPath);
       if (!relativeControllerPath) {
         return;
@@ -275,17 +242,6 @@ connection.onCompletion(async (textDocumentPosition: TextDocumentPositionParams)
 
   if (!dataControllerMatch) {
     return [];
-  }
-
-  // Get settings and read controllers
-  const settings = await getDocumentSettings(document.uri);
-
-  // Get workspace root from document URI
-  const wsRoot = await getWorkspaceRoot(document.uri);
-
-  if (settings.controllersDir !== cachedControllersDir) {
-    readControllersToCache(settings.controllersDir, wsRoot);
-    cachedControllersDir = settings.controllersDir;
   }
 
   // Create completion items from controllers
@@ -349,14 +305,6 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
     return null;
   }
 
-  const settings = await getDocumentSettings(document.uri);
-
-  if (settings.controllersDir !== cachedControllersDir) {
-    const wsRoot = await getWorkspaceRoot(document.uri);
-    readControllersToCache(settings.controllersDir, wsRoot);
-    cachedControllersDir = settings.controllersDir;
-  }
-
   // Find the controller file
   const controllerInfo = cachedControllers.get(word);
   if (!controllerInfo) {
@@ -375,6 +323,14 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
       end: { line: 0, character: 0 },
     },
   };
+});
+
+connection.languages.diagnostics.on(async (_params) => {
+  // Return empty diagnostics for now
+  return {
+    kind: DocumentDiagnosticReportKind.Full,
+    items: [],
+  } satisfies DocumentDiagnosticReport;
 });
 
 // for open, change and close text document events
