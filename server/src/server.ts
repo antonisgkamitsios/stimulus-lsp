@@ -15,6 +15,7 @@ import {
   type DocumentDiagnosticReport,
   Location,
   FileChangeType,
+  CompletionParams,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -179,7 +180,7 @@ connection.onDidChangeWatchedFiles((change) => {
 });
 
 // This handler provides the initial list of the completion items.
-connection.onCompletion(async (textDocumentPosition: TextDocumentPositionParams): Promise<CompletionItem[]> => {
+connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<CompletionItem[]> => {
   const document = documents.get(textDocumentPosition.textDocument.uri);
   if (!document) {
     return [];
@@ -193,7 +194,7 @@ connection.onCompletion(async (textDocumentPosition: TextDocumentPositionParams)
   const lineText = text.substring(lineStart, offset);
 
   // Check if we're in a data-controller attribute (either data-controller="..." or data-controller-"...")
-  const dataControllerMatch = lineText.match(/data-controller(=["'])?([a-z0-9-]*)$/i);
+  const dataControllerMatch = lineText.match(/data-controller=["']([a-z0-9-]*)/i);
 
   if (!dataControllerMatch) {
     return [];
