@@ -1,4 +1,5 @@
 ### This repo structure has been cloned from https://github.com/microsoft/vscode-extension-samples/tree/main/lsp-sample
+
 # Stimulus LSP - Language Server Protocol Extension
 
 This VS Code extension provides intelligent autocomplete for Stimulus controller names in HTML `data-controller-` attributes.
@@ -30,9 +31,9 @@ Replace `./app/controllers` with the path to your Stimulus controllers directory
 
 ## Features
 
-### Autocomplete for `data-controller-` Attributes
+### Autocomplete for `data-controller` Attributes
 
-As you type `data-controller-` in HTML files, the extension will:
+As you type `data-controller=""` in HTML files, the extension will:
 
 1. Scan your controllers directory for files matching `*_controller.ts` or `*_controller.js`
 2. Extract controller names and convert them to kebab-case
@@ -48,37 +49,20 @@ The extension automatically converts file paths to Stimulus controller names:
 - `app/controllers/admin/users_controller.ts` → `admin--users`
 - `app/controllers/nested/deep/item_controller.ts` → `nested--deep--item`
 
-## Usage Example
-
-In your HTML file:
-
-```html
-<div data-controller-dashboard>
-  <!-- content -->
-</div>
-
-<div data-controller-form-validator>
-  <!-- content -->
-</div>
-
-<div data-controller-admin--users>
-  <!-- content -->
-</div>
-```
-
-Simply start typing `data-controller-` and press `Ctrl+Space` (or `Cmd+Space` on Mac) to see available controllers.
+Simply start typing `data-controller=""` and press `Ctrl+Space` (or `Cmd+Space` on Mac) to see available controllers.
 
 ## Configuration
 
-### `stimulus.controllersDir`
+### `stimulus.controllersDirs`
 
-- **Type:** `string`
-- **Default:** `./app/controllers`
-- **Description:** The directory path (relative to workspace root) where your Stimulus controller files are located.
+- **Type:** `array`
+- **Default:** `['./app/controllers']`
+- **Description:** The directory paths (relative to workspace root) where your Stimulus controller files are located.
 
 ## Supported File Extensions
 
 The extension looks for controller files with these patterns:
+
 - `*_controller.ts`
 - `*_controller.js`
 
@@ -91,4 +75,3 @@ The extension looks for controller files with these patterns:
 
 - The extension caches controller names for performance. When you change the `controllersDir` setting, the cache is automatically refreshed.
 - The extension only provides completions for `data-controller-` attributes in HTML files.
-- Controller names are sorted alphabetically for consistent suggestions.
