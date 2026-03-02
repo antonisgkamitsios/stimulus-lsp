@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { URI } from 'vscode-uri';
 
 export function stripFilePrefix(uri: string): string {
@@ -33,4 +34,26 @@ export function controllerIdentifierFromPath(filePath: string): string {
   const controllerName = withoutSuffix.replace(/\//g, '--').replace(/_/g, '-');
 
   return controllerName;
+}
+
+export function getFullControllersPaths(workspaceRoot: string, controllersDirs: string[]): string[] {
+  return controllersDirs.map((controllerDir) =>
+    path.isAbsolute(controllerDir) ? controllerDir : path.join(workspaceRoot, controllerDir),
+  );
+}
+
+export function getFullAndRelativeControllerPath(fileUri: string, fullControllersPaths: string[]): string[] {
+  let fullControllerPath = '';
+  let relativeControllerPath = '';
+  const filePath = stripFilePrefix(fileUri);
+  fullControllersPaths.forEach((fullPath) => {
+    const relativePath = normalizePath(path.relative(fullPath, filePath));
+
+    if (relativePath.startsWith('..')) return;
+
+    fullControllerPath = path.join(fullPath, relativePath);
+    relativeControllerPath = relativePath;
+  });
+
+  return [fullControllerPath, relativeControllerPath];
 }

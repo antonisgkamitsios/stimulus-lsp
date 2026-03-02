@@ -19,7 +19,14 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import { ControllersDir, StimulusSettings } from './types';
-import { arraysEqual, controllerIdentifierFromPath, normalizePath, stripFilePrefix } from './utils';
+import {
+  arraysEqual,
+  controllerIdentifierFromPath,
+  getFullAndRelativeControllerPath,
+  getFullControllersPaths,
+  normalizePath,
+  stripFilePrefix,
+} from './utils';
 import { ControllersCache } from './controllersCache';
 
 const defaultSettings: StimulusSettings = { controllersDirs: ['./app/controllers'] };
@@ -41,28 +48,6 @@ async function updateCache(shouldClear = false) {
   if (shouldClear) controllersCache.clear();
   controllersCache.readControllersToCache(settings.controllersDirs);
   cachedControllersDirs = settings.controllersDirs;
-}
-
-function getFullAndRelativeControllerPath(fileUri: string, fullControllersPaths: string[]): string[] {
-  let fullControllerPath = '';
-  let relativeControllerPath = '';
-  const filePath = stripFilePrefix(fileUri);
-  fullControllersPaths.forEach((fullPath) => {
-    const relativePath = normalizePath(path.relative(fullPath, filePath));
-
-    if (relativePath.startsWith('..')) return;
-
-    fullControllerPath = path.join(fullPath, relativePath);
-    relativeControllerPath = relativePath;
-  });
-
-  return [fullControllerPath, relativeControllerPath];
-}
-
-function getFullControllersPaths(controllersDirs: string[]): string[] {
-  return controllersDirs.map((controllerDir) =>
-    path.isAbsolute(controllerDir) ? controllerDir : path.join(workspaceRoot, controllerDir),
-  );
 }
 
 let hasConfigurationCapability = false;
@@ -166,7 +151,7 @@ connection.onDidChangeWatchedFiles((change) => {
     changes.forEach(async (change) => {
       const settings = await getSettings();
 
-      const fullControllersPaths = getFullControllersPaths(settings.controllersDirs);
+      const fullControllersPaths = getFullControllersPaths(workspaceRoot, settings.controllersDirs);
 
       const [fullControllerPath, relativeControllerPath] = getFullAndRelativeControllerPath(
         change.uri,
