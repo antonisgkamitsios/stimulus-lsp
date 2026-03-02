@@ -194,7 +194,7 @@ connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<
   const lineText = text.substring(lineStart, offset);
 
   // Check if we're in a data-controller attribute (either data-controller="..." or data-controller-"...")
-  const dataControllerMatch = lineText.match(/data-controller=["']([a-z0-9-]*)/i);
+  const dataControllerMatch = lineText.match(/data-controller=["']([a-z0-9-]*)$/i);
 
   if (!dataControllerMatch) {
     return [];
