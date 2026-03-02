@@ -26,11 +26,13 @@
 			"type": "object",
 			"title": "Stimulus LSP configuration",
 			"properties": {
-				"stimulus.controllersDir": {
+				"stimulus.controllersDirs": {
 					"scope": "resource",
-					"type": "string",
-					"default": "./app/controllers",
-					"description": "Path to your Stimulus controllers directory"
+					"type": "array",
+					"default": [
+						"./app/controllers"
+					],
+					"description": "Paths to your Stimulus controllers directory"
 				}
 			}
 		}

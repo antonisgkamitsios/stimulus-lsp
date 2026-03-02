@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as path from 'path';
 
 import {
@@ -19,77 +18,51 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ControllerInfo, StimulusSettings } from './types';
-import { normalizePath, stripFilePrefix } from './utils';
+import { ControllersDir, StimulusSettings } from './types';
+import { arraysEqual, controllerIdentifierFromPath, normalizePath, stripFilePrefix } from './utils';
+import { ControllersCache } from './controllersCache';
 
-const defaultSettings: StimulusSettings = { controllersDir: './app/controllers' };
+const defaultSettings: StimulusSettings = { controllersDirs: ['./app/controllers'] };
 let globalSettings: StimulusSettings = defaultSettings;
-let cachedControllersDir: string;
+let cachedControllersDirs: ControllersDir[] = [];
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
 let workspaceRoot: string;
 
-const cachedControllers = new Map<string, ControllerInfo>();
+const controllersCache = new ControllersCache(connection);
 
-function readControllersToCache(controllersDir: string) {
-  const fullPath = path.isAbsolute(controllersDir) ? controllersDir : path.join(workspaceRoot, controllersDir);
+async function updateCache(shouldClear = false) {
+  const settings = await getSettings();
 
-  try {
-    if (!fs.existsSync(fullPath)) {
-      connection.console.log(`[readControllers] Directory does not exist: ${fullPath}`);
-      return [];
-    }
+  if (arraysEqual(cachedControllersDirs, settings.controllersDirs)) return;
 
-    const walkDir = (dir: string) => {
-      const files = fs.readdirSync(dir);
-      for (const file of files) {
-        const fullFilePath = path.join(dir, file);
-        const stat = fs.statSync(fullFilePath);
-
-        if (stat.isDirectory()) {
-          walkDir(fullFilePath);
-        } else if (file.endsWith('_controller.ts') || file.endsWith('_controller.js')) {
-          const relativePath = path.relative(fullPath, fullFilePath);
-          const controllerName = getControllerIdentifier(relativePath);
-          cachedControllers.set(controllerName, { filePath: fullFilePath });
-        }
-      }
-    };
-
-    walkDir(fullPath);
-  } catch (error) {
-    connection.console.log(`[readControllers] Error reading controllers: ${error}`);
-  }
+  if (shouldClear) controllersCache.clear();
+  controllersCache.readControllersToCache(settings.controllersDirs);
+  cachedControllersDirs = settings.controllersDirs;
 }
 
-function getRelativeControllerPath(fileUri: string, fullControllersPath: string): string | null {
-  try {
-    const filePath = stripFilePrefix(fileUri);
+function getFullAndRelativeControllerPath(fileUri: string, fullControllersPaths: string[]): string[] {
+  let fullControllerPath = '';
+  let relativeControllerPath = '';
+  const filePath = stripFilePrefix(fileUri);
+  fullControllersPaths.forEach((fullPath) => {
+    const relativePath = normalizePath(path.relative(fullPath, filePath));
 
-    // Get relative path from controllers dir
-    const relativePath = path.relative(fullControllersPath, filePath);
+    if (relativePath.startsWith('..')) return;
 
-    return normalizePath(relativePath);
-  } catch (error) {
-    connection.console.log(`[readControllers] Error reading controllers: ${error}`);
-    return null;
-  }
+    fullControllerPath = path.join(fullPath, relativePath);
+    relativeControllerPath = relativePath;
+  });
+
+  return [fullControllerPath, relativeControllerPath];
 }
 
-function getFullControllersPath(controllersDir: string): string {
-  return path.isAbsolute(controllersDir) ? controllersDir : path.join(workspaceRoot, controllersDir);
-}
-
-function getControllerIdentifier(filePath: string): string {
-  const relativePath = normalizePath(filePath);
-  const withoutExtension = relativePath.replace(/\.[^.]*$/, '');
-  const withoutSuffix = withoutExtension.replace(/_controller$/, '');
-
-  const controllerName = withoutSuffix.replace(/\//g, '--').replace(/_/g, '-');
-
-  return controllerName;
+function getFullControllersPaths(controllersDirs: string[]): string[] {
+  return controllersDirs.map((controllerDir) =>
+    path.isAbsolute(controllerDir) ? controllerDir : path.join(workspaceRoot, controllerDir),
+  );
 }
 
 let hasConfigurationCapability = false;
@@ -121,6 +94,7 @@ connection.onInitialize((params: InitializeParams) => {
     workspaceRoot = params.rootPath;
   }
   workspaceRoot = stripFilePrefix(workspaceRoot);
+  controllersCache.workspaceRoot = workspaceRoot;
 
   const result: InitializeResult = {
     capabilities: {
@@ -159,11 +133,7 @@ connection.onInitialized(async () => {
     });
   }
 
-  const settings = await getSettings();
-  if (cachedControllersDir !== settings.controllersDir) {
-    readControllersToCache(settings.controllersDir);
-    cachedControllersDir = settings.controllersDir;
-  }
+  await updateCache();
 });
 
 // The content of a text document has changed. This event is emitted
@@ -177,12 +147,8 @@ connection.onDidChangeConfiguration(async (change) => {
   if (!hasConfigurationCapability) {
     globalSettings = change.settings.stimulus || defaultSettings;
   }
-  const settings = await getSettings();
-  if (cachedControllersDir !== settings.controllersDir) {
-    cachedControllers.clear();
-    readControllersToCache(settings.controllersDir);
-    cachedControllersDir = settings.controllersDir;
-  }
+
+  await updateCache(true);
 
   // Refresh the diagnostics since the `controllersDir` could have changed.
   connection.languages.diagnostics.refresh();
@@ -199,24 +165,28 @@ connection.onDidChangeWatchedFiles((change) => {
   if (hasControllerChanges) {
     changes.forEach(async (change) => {
       const settings = await getSettings();
-      const fullControllersPath = getFullControllersPath(settings.controllersDir);
-      const relativeControllerPath = getRelativeControllerPath(change.uri, fullControllersPath);
+
+      const fullControllersPaths = getFullControllersPaths(settings.controllersDirs);
+
+      const [fullControllerPath, relativeControllerPath] = getFullAndRelativeControllerPath(
+        change.uri,
+        fullControllersPaths,
+      );
       if (!relativeControllerPath) {
         return;
       }
 
-      const controllerIdentifier = getControllerIdentifier(relativeControllerPath);
+      const controllerIdentifier = controllerIdentifierFromPath(relativeControllerPath);
 
       switch (change.type) {
         case FileChangeType.Created:
-          cachedControllers.set(controllerIdentifier, {
-            filePath: path.join(fullControllersPath, relativeControllerPath),
-          });
+          controllersCache.addController(fullControllerPath, controllerIdentifier);
+
           break;
         case FileChangeType.Changed:
           break;
         case FileChangeType.Deleted:
-          cachedControllers.delete(controllerIdentifier);
+          controllersCache.deleteController(fullControllerPath);
           break;
       }
     });
@@ -246,11 +216,11 @@ connection.onCompletion(async (textDocumentPosition: TextDocumentPositionParams)
 
   // Create completion items from controllers
   const completions: CompletionItem[] = [];
-  cachedControllers.forEach((_controllerInfo, controllerIdentifier) =>
+  controllersCache.forEach((controllerIdentifier, controllerPath) =>
     completions.push({
       label: controllerIdentifier,
       kind: CompletionItemKind.Class,
-      detail: 'Stimulus Controller',
+      detail: path.relative(workspaceRoot, controllerPath),
       insertText: controllerIdentifier,
     }),
   );
@@ -265,7 +235,7 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
 });
 
 // This handler provides the definition (go to definition) for a symbol
-connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams): Promise<Location | null> => {
+connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams): Promise<Location[] | null> => {
   const document = documents.get(textDocumentPosition.textDocument.uri);
   if (!document) {
     connection.console.log('[Definition] No document found');
@@ -305,24 +275,26 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
     return null;
   }
 
-  // Find the controller file
-  const controllerInfo = cachedControllers.get(word);
-  if (!controllerInfo) {
+  // Find the controller file(s)
+  const controllerPaths = controllersCache.getControllerPathByIdentifier(word);
+  if (controllerPaths.length === 0) {
     return null;
   }
 
-  // Return the location (file URI and position)
-  // Ensure proper file URI format with forward slashes
-  const normalizedPath = normalizePath(controllerInfo.filePath);
-  const fileUri = normalizedPath.startsWith('/') ? 'file://' + normalizedPath : 'file:///' + normalizedPath;
+  const locations = controllerPaths.map((path) => {
+    const normalizedPath = normalizePath(path);
+    const fileUri = normalizedPath.startsWith('/') ? 'file://' + normalizedPath : 'file:///' + normalizedPath;
 
-  return {
-    uri: fileUri,
-    range: {
-      start: { line: 0, character: 0 },
-      end: { line: 0, character: 0 },
-    },
-  };
+    return {
+      uri: fileUri,
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 0 },
+      },
+    };
+  });
+
+  return locations;
 });
 
 connection.languages.diagnostics.on(async (_params) => {

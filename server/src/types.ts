@@ -1,7 +1,7 @@
+export type ControllersDir = string;
 export interface StimulusSettings {
-  controllersDir: string;
+  controllersDirs: ControllersDir[];
 }
 
-export interface ControllerInfo {
-  filePath: string;
-}
+export type ControllerPath = string;
+export type ControllerIdentifier = string;
