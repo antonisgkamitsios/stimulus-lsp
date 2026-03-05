@@ -29,7 +29,7 @@ import {
   normalizePath,
   stripFilePrefix,
 } from './utils';
-import { ControllersCache } from './controllersCache';
+import { ControllersStore } from './controllersStore';
 import { Glob } from './glob';
 
 const defaultSettings: StimulusSettings = {
@@ -45,7 +45,7 @@ const documents = new TextDocuments(TextDocument);
 
 let workspaceRoot: string;
 
-const controllersCache = new ControllersCache(connection, getSettings);
+const controllersStore = new ControllersStore(connection);
 
 function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusSettings): boolean {
   if (!cached) return false;
@@ -53,13 +53,13 @@ function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusS
   return JSON.stringify(cached) === JSON.stringify(settings);
 }
 
-async function updateCache(shouldClear = false) {
+async function updateControllers(shouldClear = false) {
   const settings = await getSettings();
 
   if (settingsEqual(cachedSettings, settings)) return;
 
-  if (shouldClear) controllersCache.clear();
-  controllersCache.readControllersToCache();
+  if (shouldClear) controllersStore.clear();
+  controllersStore.populateControllers(settings);
   cachedSettings = settings;
 }
 
@@ -92,7 +92,7 @@ connection.onInitialize((params: InitializeParams) => {
     workspaceRoot = params.rootPath;
   }
   workspaceRoot = stripFilePrefix(workspaceRoot);
-  controllersCache.workspaceRoot = workspaceRoot;
+  controllersStore.workspaceRoot = workspaceRoot;
 
   const result: InitializeResult = {
     capabilities: {
@@ -147,7 +147,7 @@ connection.onInitialized(async () => {
 
   await updateFileWatcher();
 
-  await updateCache();
+  await updateControllers();
 });
 
 connection.onDidChangeConfiguration(async (change) => {
@@ -157,7 +157,7 @@ connection.onDidChangeConfiguration(async (change) => {
 
   await updateFileWatcher();
 
-  await updateCache(true);
+  await updateControllers(true);
 
   // Refresh the diagnostics since the `controllersDir` could have changed.
   connection.languages.diagnostics.refresh();
@@ -188,13 +188,13 @@ connection.onDidChangeWatchedFiles(async (change) => {
 
       switch (change.type) {
         case FileChangeType.Created:
-          controllersCache.addController(fullControllerPath, controllerIdentifier);
+          controllersStore.addController(fullControllerPath, controllerIdentifier);
 
           break;
         case FileChangeType.Changed:
           break;
         case FileChangeType.Deleted:
-          controllersCache.deleteController(fullControllerPath);
+          controllersStore.deleteController(fullControllerPath);
           break;
       }
     });
@@ -230,7 +230,7 @@ connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<
 
   // Create completion items from controllers
   const completions: CompletionItem[] = [];
-  controllersCache.forEach((controllerIdentifier, controllerPath) =>
+  controllersStore.forEach((controllerIdentifier, controllerPath) =>
     completions.push({
       label: controllerIdentifier,
       kind: CompletionItemKind.Class,
@@ -290,7 +290,7 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
   }
 
   // Find the controller file(s)
-  const controllerPaths = controllersCache.getControllerPathByIdentifier(word);
+  const controllerPaths = controllersStore.getControllerPathByIdentifier(word);
   if (controllerPaths.length === 0) {
     return null;
   }
