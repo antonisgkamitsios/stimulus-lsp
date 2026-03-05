@@ -1,5 +1,5 @@
 {
-	"name": "stimulus-lsp",
+	"name": "stimulus-lsp-server",
 	"description": "A simple stimulus lsp",
 	"version": "1.0.0",
 	"author": "Antonis Gkamitsios",
