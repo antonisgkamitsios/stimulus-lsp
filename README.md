@@ -59,19 +59,14 @@ Simply start typing `data-controller=""` and press `Ctrl+Space` (or `Cmd+Space` 
 - **Default:** `['./app/controllers']`
 - **Description:** The directory paths (relative to workspace root) where your Stimulus controller files are located.
 
-## Supported File Extensions
+### `stimulus.fileWatchPattern`
 
-The extension looks for controller files with these patterns:
+- **Type:** `string`
+- **Default:** `**/*_controller.{ts,js}`
+- **Description:** Glob pattern for files to watch for controller changes.
 
-- `*_controller.ts`
-- `*_controller.js`
 
 ## Requirements
 
 - VS Code 1.56.0 or higher
 - HTML files in your workspace
-
-## Notes
-
-- The extension caches controller names for performance. When you change the `controllersDir` setting, the cache is automatically refreshed.
-- The extension only provides completions for `data-controller-` attributes in HTML files.

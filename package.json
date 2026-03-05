@@ -33,6 +33,12 @@
 						"./app/controllers"
 					],
 					"description": "Paths to your Stimulus controllers directory"
+				},
+				"stimulus.fileWatchPattern": {
+					"scope": "resource",
+					"type": "string",
+					"default": "**/*_controller.{ts,js}",
+					"description": "Glob pattern for files to watch for controller changes"
 				}
 			}
 		}

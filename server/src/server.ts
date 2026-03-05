@@ -16,12 +16,13 @@ import {
   Location,
   FileChangeType,
   CompletionParams,
+  DidChangeWatchedFilesNotification,
+  Disposable,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { ControllersDir, StimulusSettings } from './types';
+import { StimulusSettings } from './types';
 import {
-  arraysEqual,
   controllerIdentifierFromPath,
   getFullAndRelativeControllerPath,
   getFullControllersPaths,
@@ -29,26 +30,37 @@ import {
   stripFilePrefix,
 } from './utils';
 import { ControllersCache } from './controllersCache';
+import { Glob } from './glob';
 
-const defaultSettings: StimulusSettings = { controllersDirs: ['./app/controllers'] };
+const defaultSettings: StimulusSettings = {
+  controllersDirs: ['./app/controllers'],
+  fileWatchPattern: '**/*_controller.{ts,js}',
+};
+
 let globalSettings: StimulusSettings = defaultSettings;
-let cachedControllersDirs: ControllersDir[] = [];
+let cachedSettings: StimulusSettings | undefined;
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
 let workspaceRoot: string;
 
-const controllersCache = new ControllersCache(connection);
+const controllersCache = new ControllersCache(connection, getSettings);
+
+function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusSettings): boolean {
+  if (!cached) return false;
+
+  return JSON.stringify(cached) === JSON.stringify(settings);
+}
 
 async function updateCache(shouldClear = false) {
   const settings = await getSettings();
 
-  if (arraysEqual(cachedControllersDirs, settings.controllersDirs)) return;
+  if (settingsEqual(cachedSettings, settings)) return;
 
   if (shouldClear) controllersCache.clear();
-  controllersCache.readControllersToCache(settings.controllersDirs);
-  cachedControllersDirs = settings.controllersDirs;
+  controllersCache.readControllersToCache();
+  cachedSettings = settings;
 }
 
 let hasConfigurationCapability = false;
@@ -108,6 +120,20 @@ connection.onInitialize((params: InitializeParams) => {
   return result;
 });
 
+let fileWatcherRegistration: Disposable | undefined;
+async function updateFileWatcher() {
+  const settings = await getSettings();
+
+  if (fileWatcherRegistration) {
+    fileWatcherRegistration.dispose();
+    fileWatcherRegistration = undefined;
+  }
+
+  fileWatcherRegistration = await connection.client.register(DidChangeWatchedFilesNotification.type, {
+    watchers: [{ globPattern: settings.fileWatchPattern }],
+  });
+}
+
 connection.onInitialized(async () => {
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
@@ -119,20 +145,17 @@ connection.onInitialized(async () => {
     });
   }
 
-  await updateCache();
-});
+  await updateFileWatcher();
 
-// The content of a text document has changed. This event is emitted
-// when the text document first opened or when its content has changed.
-documents.onDidChangeContent((_change) => {
-  connection.console.log('onDidChangeContent');
-  // Diagnostics will be provided through the diagnostics endpoint
+  await updateCache();
 });
 
 connection.onDidChangeConfiguration(async (change) => {
   if (!hasConfigurationCapability) {
     globalSettings = change.settings.stimulus || defaultSettings;
   }
+
+  await updateFileWatcher();
 
   await updateCache(true);
 
@@ -142,16 +165,15 @@ connection.onDidChangeConfiguration(async (change) => {
 
 // Monitored files have changed in VSCode
 // Check if any controller files were changed
-connection.onDidChangeWatchedFiles((change) => {
+connection.onDidChangeWatchedFiles(async (change) => {
+  const settings = await getSettings();
   const changes = change.changes;
-  const hasControllerChanges = changes.some(
-    (change) => change.uri.includes('_controller.ts') || change.uri.includes('_controller.js'),
-  );
+
+  const glob = new Glob(settings.fileWatchPattern);
+  const hasControllerChanges = changes.some((change) => glob.matchesSuffix(change.uri));
 
   if (hasControllerChanges) {
-    changes.forEach(async (change) => {
-      const settings = await getSettings();
-
+    changes.forEach((change) => {
       const fullControllersPaths = getFullControllersPaths(workspaceRoot, settings.controllersDirs);
 
       const [fullControllerPath, relativeControllerPath] = getFullAndRelativeControllerPath(
@@ -162,7 +184,7 @@ connection.onDidChangeWatchedFiles((change) => {
         return;
       }
 
-      const controllerIdentifier = controllerIdentifierFromPath(relativeControllerPath);
+      const controllerIdentifier = controllerIdentifierFromPath(relativeControllerPath, glob.base);
 
       switch (change.type) {
         case FileChangeType.Created:
@@ -177,6 +199,13 @@ connection.onDidChangeWatchedFiles((change) => {
       }
     });
   }
+});
+
+// The content of a text document has changed. This event is emitted
+// when the text document first opened or when its content has changed.
+documents.onDidChangeContent((_change) => {
+  connection.console.log('onDidChangeContent');
+  // Diagnostics will be provided through the diagnostics endpoint
 });
 
 // This handler provides the initial list of the completion items.

@@ -2,23 +2,30 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { Connection } from 'vscode-languageserver';
-import { ControllerIdentifier, ControllerPath, ControllersDir } from './types';
+import { ControllerIdentifier, ControllerPath, StimulusSettings } from './types';
 import { controllerIdentifierFromPath } from './utils';
+import { Glob } from './glob';
 
 export class ControllersCache {
   //  by design when we are going to access the workspaceRoot is going to be set by the `onInitialize` method
   workspaceRoot!: string;
   connection: Connection;
+  getSettings: () => Promise<StimulusSettings>;
   #cachedControllers: Map<ControllerPath, ControllerIdentifier>;
 
-  constructor(connection: Connection) {
+  constructor(connection: Connection, getSettings: () => Promise<StimulusSettings>) {
     this.connection = connection;
+    this.getSettings = getSettings;
     this.#cachedControllers = new Map<ControllerPath, ControllerIdentifier>();
   }
 
-  readControllersToCache(controllersDirs: ControllersDir[]) {
-    controllersDirs.forEach((controllersDir) => {
-      this.#addControllerFilesToCache(controllersDir);
+  async readControllersToCache() {
+    const settings = await this.getSettings();
+
+    const glob = new Glob(settings.fileWatchPattern);
+
+    settings.controllersDirs.forEach((controllersDir) => {
+      this.#addControllerFilesToCache(controllersDir, glob);
     });
   }
 
@@ -57,7 +64,7 @@ export class ControllersCache {
     return controllerPaths;
   }
 
-  #addControllerFilesToCache(controllersDir: string) {
+  #addControllerFilesToCache(controllersDir: string, glob: Glob) {
     const fullPath = path.isAbsolute(controllersDir) ? controllersDir : path.join(this.workspaceRoot, controllersDir);
 
     try {
@@ -74,9 +81,9 @@ export class ControllersCache {
 
           if (stat.isDirectory()) {
             walkDir(fullFilePath);
-          } else if (file.endsWith('_controller.ts') || file.endsWith('_controller.js')) {
+          } else if (glob.matchesSuffix(file)) {
             const relativePath = path.relative(fullPath, fullFilePath);
-            const controllerIdentifier = controllerIdentifierFromPath(relativePath);
+            const controllerIdentifier = controllerIdentifierFromPath(relativePath, glob.base);
             this.#cachedControllers.set(fullFilePath, controllerIdentifier);
           }
         }
