@@ -8,7 +8,7 @@
 		"type": "git",
 		"url": "https://github.com/antonisgkamitsios/stimulus-lsp"
 	},
-	"publisher": "vscode-samples",
+	"publisher": "antonisgkamitsios",
 	"categories": [],
 	"keywords": [
 		"multi-root ready"
@@ -34,6 +34,15 @@
 					],
 					"description": "Paths to your Stimulus controllers directory"
 				},
+				"stimulus.activationLanguages": {
+					"scope": "window",
+					"type": "array",
+					"default": [
+						"html"
+					],
+					"description": "Languages that Stimulus LSP will activate on.",
+					"restartRequired": true
+				},
 				"stimulus.fileWatchPattern": {
 					"scope": "resource",
 					"type": "string",
@@ -43,9 +52,14 @@
 			}
 		}
 	},
+	"workspaces": [
+		"client",
+		"server",
+		"shared"
+	],
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -b",
+		"compile": "npm run compile --workspace=shared && npm run compile --workspace=client && npm run compile --workspace=server",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",

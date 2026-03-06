@@ -1,9 +1,17 @@
 import * as path from 'path';
-import { ExtensionContext, window } from 'vscode';
+import { ExtensionContext, window, workspace, WorkspaceConfiguration } from 'vscode';
 
 import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from 'vscode-languageclient/node';
+import { StimulusSettings, defaultSettings, LSP_ID } from 'shared';
 
 let client: LanguageClient;
+
+function getSetting<K extends keyof StimulusSettings>(
+  configuration: WorkspaceConfiguration,
+  key: K,
+): StimulusSettings[K] {
+  return configuration.get(key) ?? defaultSettings[key];
+}
 
 export function activate(context: ExtensionContext) {
   // Create an output channel for debug logging
@@ -22,15 +30,17 @@ export function activate(context: ExtensionContext) {
       transport: TransportKind.ipc,
     },
   };
+  const stimulusConfig = workspace.getConfiguration(LSP_ID);
+  const activationLanguages = getSetting(stimulusConfig, 'activationLanguages');
 
   const clientOptions: LanguageClientOptions = {
     // Register the server for HTML documents
-    documentSelector: [{ scheme: 'file', language: 'html' }],
+    documentSelector: activationLanguages.map((lang) => ({ scheme: 'file', language: lang })),
     outputChannel: outputChannel,
   };
 
   // Create the language client and start the client.
-  client = new LanguageClient('stimulus', 'Stimulus LSP', serverOptions, clientOptions);
+  client = new LanguageClient(LSP_ID, 'Stimulus LSP', serverOptions, clientOptions);
 
   // Start the client. This will also launch the server
   client.start();

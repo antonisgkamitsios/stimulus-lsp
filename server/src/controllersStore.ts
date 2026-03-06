@@ -2,9 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { Connection } from 'vscode-languageserver';
-import { ControllerIdentifier, ControllerPath, StimulusSettings } from './types';
+import { ControllerIdentifier, ControllerPath } from './types';
 import { controllerIdentifierFromPath } from './utils';
 import { Glob } from './glob';
+import { StimulusSettings } from 'shared';
 
 export class ControllersStore {
   //  by design when we are going to access the workspaceRoot is going to be set by the `onInitialize` method

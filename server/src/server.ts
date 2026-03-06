@@ -21,7 +21,7 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import { StimulusSettings } from './types';
+import { StimulusSettings, LSP_ID, defaultSettings } from 'shared';
 import {
   controllerIdentifierFromPath,
   getFullAndRelativeControllerPath,
@@ -31,11 +31,6 @@ import {
 } from './utils';
 import { ControllersStore } from './controllersStore';
 import { Glob } from './glob';
-
-const defaultSettings: StimulusSettings = {
-  controllersDirs: ['./app/controllers'],
-  fileWatchPattern: '**/*_controller.{ts,js}',
-};
 
 let globalSettings: StimulusSettings = defaultSettings;
 let cachedSettings: StimulusSettings | undefined;
@@ -71,7 +66,7 @@ async function getSettings(): Promise<StimulusSettings> {
     return globalSettings;
   }
   const settings: StimulusSettings = await connection.workspace.getConfiguration({
-    section: 'stimulus',
+    section: LSP_ID,
   });
   return settings;
 }
