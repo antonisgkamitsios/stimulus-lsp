@@ -62,7 +62,6 @@
 		"compile": "npm run compile --workspace=shared && npm run compile --workspace=client && npm run compile --workspace=server",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
 		"test": "sh ./scripts/e2e.sh"
 	},
 	"devDependencies": {
