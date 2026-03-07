@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Build
+        uses: ./.github/actions/build
+
+      - name: Compile project
+        run: npm run compile
+
+      - name: Cache VS code
+        uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: vscode-${{ runner.os }}-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            vscode-${{ runner.os }}-
+
+      - name: Test server
+        run: cd ./server && npm run test
+
+      - name: Install xvfb (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb
+
+      - name: E2E test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test
+
+      - name: E2E test (Windows/macos)
+        if: runner.os != 'Linux'
+        run: npm run test

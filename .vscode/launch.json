@@ -1,35 +1,46 @@
 // A launch configuration that compiles the extension and then opens it inside a new window
 {
-	"version": "0.2.0",
-	"configurations": [
-		{
-			"type": "extensionHost",
-			"request": "launch",
-			"name": "Launch Client",
-			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}"],
-			"outFiles": [
-				"${workspaceRoot}/client/out/**/*.js",
-				"${workspaceRoot}/server/out/**/*.js"
-			],
-			"autoAttachChildProcesses": true,
-			"preLaunchTask": {
-				"type": "npm",
-				"script": "watch"
-			}
-		}
-		// Disabled for now - use Ctrl+Shift+D to run tests manually when needed
-		// {
-		// 	"name": "Language Server E2E Test",
-		// 	"type": "extensionHost",
-		// 	"request": "launch",
-		// 	"runtimeExecutable": "${execPath}",
-		// 	"args": [
-		// 		"--extensionDevelopmentPath=${workspaceRoot}",
-		// 		"--extensionTestsPath=${workspaceRoot}/client/out/test/index",
-		// 		"${workspaceRoot}/client/testFixture"
-		// 	],
-		// 	"outFiles": ["${workspaceRoot}/client/out/test/**/*.js"]
-		// }
-	]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "extensionHost",
+      "request": "launch",
+      "name": "Launch Client",
+      "runtimeExecutable": "${execPath}",
+      "args": ["--extensionDevelopmentPath=${workspaceRoot}"],
+      "outFiles": ["${workspaceRoot}/client/out/**/*.js", "${workspaceRoot}/server/out/**/*.js"],
+      "autoAttachChildProcesses": true,
+      "preLaunchTask": {
+        "type": "npm",
+        "script": "watch"
+      }
+    },
+    {
+      "name": "Language Server E2E Test",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceRoot}",
+        "--extensionTestsPath=${workspaceRoot}/client/out/test/index",
+        "--user-data-dir=${workspaceRoot}/.vscode-test/user-data",
+        "${workspaceRoot}/client/testFixture"
+      ],
+      "outFiles": ["${workspaceRoot}/client/out/test/**/*.js"]
+    },
+    {
+      "name": "Attach to Language Server",
+      "type": "node",
+      "request": "attach",
+      "port": 6009,
+      "restart": true,
+      "outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Test + Attach Server",
+      "configurations": ["Language Server E2E Test", "Attach to Language Server"]
+    }
+  ]
 }
