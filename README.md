@@ -65,8 +65,8 @@ Simply start typing `data-controller=""` and press `Ctrl+Space` (or `Cmd+Space` 
 - **Default:** `**/*_controller.{ts,js}`
 - **Description:** Glob pattern for files to watch for controller changes.
 
+### `stimulus.activationLanguages`
 
-## Requirements
-
-- VS Code 1.56.0 or higher
-- HTML files in your workspace
+- **Type:** `array`
+- **Default:** `['html']`
+- **Description:** Languages that Stimulus LSP will activate on.
