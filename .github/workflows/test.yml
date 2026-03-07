@@ -1,0 +1,56 @@
+name: Tests
+
+on: [pull_request, push]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: node-cache
+        with:
+          path: |
+            node_modules
+            client/node_modules
+            server/node_modules
+            shared/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.node-cache.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Cache VS code
+        uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: vscode-${{ runner.os }}-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            vscode-${{ runner.os }}-
+
+      - name: Build project
+        run: npm run compile
+
+      - name: Test server
+        run: cd ./server && npm run test
+
+      - name: Install xvfb (Linux only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb
+
+      - name: E2E test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test
+
+      - name: E2E test (Windows/macos)
+        if: runner.os != 'Linux'
+        run: npm run test
