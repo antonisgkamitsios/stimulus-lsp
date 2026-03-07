@@ -50,6 +50,7 @@ function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusS
 
 async function updateControllers(shouldClear = false) {
   const settings = await getSettings();
+  connection.console.log(settings.activationLanguages.join(', '));
 
   if (settingsEqual(cachedSettings, settings)) return;
 
@@ -149,6 +150,8 @@ connection.onDidChangeConfiguration(async (change) => {
   if (!hasConfigurationCapability) {
     globalSettings = change.settings.stimulus || defaultSettings;
   }
+
+  connection.console.log('conf change fired');
 
   await updateFileWatcher();
 
