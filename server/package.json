@@ -15,16 +15,17 @@
 		"@typescript-eslint/typescript-estree": "^8.56.1",
 		"acorn": "^8.16.0",
 		"acorn-walk": "^8.3.5",
+		"shared": "file:../shared",
 		"vscode-languageserver": "^9.0.1",
 		"vscode-languageserver-textdocument": "^1.0.11",
-		"vscode-uri": "^3.1.0",
-		"shared": "file:../shared"
+		"vscode-uri": "^3.1.0"
 	},
 	"scripts": {
 		"test": "vitest",
 		"compile": "tsc -b"
 	},
 	"devDependencies": {
+		"dedent": "^1.7.2",
 		"vitest": "^4.0.18"
 	}
 }
