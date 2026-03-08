@@ -2,20 +2,29 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { Connection } from 'vscode-languageserver';
-import { ControllerIdentifier, ControllerPath } from './types';
+import { Class, ControllerIdentifier, ControllerPath, Method, Target, Value } from './types';
 import { controllerIdentifierFromPath } from './utils';
 import { Glob } from './glob';
 import { StimulusSettings } from 'shared';
+import { ControllerParser } from './controllerParser';
+
+interface ControllerInfo {
+  identifier: string;
+  methods: Method[];
+  values: Value[];
+  targets: Target[];
+  classes: Class[];
+}
 
 export class ControllersStore {
   //  by design when we are going to access the workspaceRoot is going to be set by the `onInitialize` method
   workspaceRoot!: string;
   connection: Connection;
-  #controllers: Map<ControllerPath, ControllerIdentifier>;
+  #controllers: Map<ControllerPath, ControllerInfo>;
 
   constructor(connection: Connection) {
     this.connection = connection;
-    this.#controllers = new Map<ControllerPath, ControllerIdentifier>();
+    this.#controllers = new Map<ControllerPath, ControllerInfo>();
   }
 
   async populateControllers(settings: StimulusSettings) {
@@ -27,11 +36,7 @@ export class ControllersStore {
   }
 
   forEach(
-    callbackfn: (
-      value: ControllerIdentifier,
-      key: ControllerPath,
-      map: Map<ControllerPath, ControllerIdentifier>,
-    ) => void,
+    callbackfn: (value: ControllerInfo, key: ControllerPath, map: Map<ControllerPath, ControllerInfo>) => void,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     thisArg?: any,
   ): void {
@@ -42,8 +47,17 @@ export class ControllersStore {
     this.#controllers.clear();
   }
 
-  addController(key: ControllerPath, value: ControllerIdentifier) {
-    this.#controllers.set(key, value);
+  addController(path: ControllerPath, identifier: ControllerIdentifier) {
+    const controllerSourceCode = fs.readFileSync(path, 'utf-8');
+    const parser = ControllerParser.parse(controllerSourceCode, path);
+    const controllerInfo: ControllerInfo = {
+      identifier: identifier,
+      methods: parser.methods,
+      classes: parser.classes,
+      targets: parser.targets,
+      values: parser.values,
+    };
+    this.#controllers.set(path, controllerInfo);
   }
 
   deleteController(key: ControllerPath) {
@@ -52,8 +66,8 @@ export class ControllersStore {
 
   getControllerPathByIdentifier(identifier: ControllerIdentifier): ControllerPath[] {
     const controllerPaths: ControllerPath[] = [];
-    this.#controllers.forEach((ident, path) => {
-      if (ident == identifier) {
+    this.#controllers.forEach((info, path) => {
+      if (info.identifier == identifier) {
         controllerPaths.push(path);
       }
     });
@@ -81,7 +95,7 @@ export class ControllersStore {
           } else if (glob.matchesSuffix(file)) {
             const relativePath = path.relative(fullPath, fullFilePath);
             const controllerIdentifier = controllerIdentifierFromPath(relativePath, glob.base);
-            this.#controllers.set(fullFilePath, controllerIdentifier);
+            this.addController(fullFilePath, controllerIdentifier);
           }
         }
       };
