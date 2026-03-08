@@ -5,9 +5,9 @@ import {
   openDoc,
   updateSettings,
   resetSettings,
-  sleep,
   createController,
   deleteController,
+  waitFor,
 } from './helper';
 
 describe('Completion', () => {
@@ -16,6 +16,7 @@ describe('Completion', () => {
   });
   after(async () => {
     await resetSettings();
+    deleteController('app/src/controllers/common/newly_created_controller.js'); // ensure we delete it if something fails
   });
 
   describe('For html files', () => {
@@ -85,19 +86,8 @@ async function waitForCompletions(
   docUri: vscode.Uri,
   position: vscode.Position,
   predicate: (completions: string[]) => boolean,
-  timeout = 5000,
 ): Promise<string[]> {
-  const start = Date.now();
-
-  while (Date.now() - start < timeout) {
-    const completions = await triggerAutoComplete(docUri, position);
-    if (predicate(completions)) {
-      return completions;
-    }
-    await sleep(200);
-  }
-
-  throw new Error(`Timed out waiting for completions to match predicate`);
+  return waitFor(docUri, position, triggerAutoComplete, predicate);
 }
 
 async function triggerAutoComplete(docUri: vscode.Uri, position: vscode.Position): Promise<string[]> {

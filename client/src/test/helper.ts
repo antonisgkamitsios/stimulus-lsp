@@ -3,13 +3,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { defaultSettings, LSP_ID, StimulusSettings } from 'shared';
 
-export let doc: vscode.TextDocument;
-export let editor: vscode.TextEditor;
-export let documentEol: string;
-export let platformEol: string;
+const MAX_TIMEOUT = 5000;
+const POLL_TIMEOUT = 50;
 
 /**
- * Activates the vscode.lsp-sample extension
+ * Activates the extension
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function activateExtension(): Promise<vscode.Extension<any>> {
@@ -22,17 +20,23 @@ export async function activateExtension(): Promise<vscode.Extension<any>> {
 
 export async function openDoc(path: string): Promise<vscode.Uri> {
   const docUri = getDocUri(path);
-  try {
-    doc = await vscode.workspace.openTextDocument(docUri);
-    editor = await vscode.window.showTextDocument(doc);
-    await sleep(2000);
+  const doc = await vscode.workspace.openTextDocument(docUri);
+  await vscode.window.showTextDocument(doc);
+
+  // Wait until LSP responds to completion requests for this document
+
+  const getCompletionList = async (docUri: vscode.Uri, position: vscode.Position) => {
+    await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', docUri, position);
 
     return docUri;
-  } catch (e) {
-    console.error(e);
-  }
+  };
 
-  return docUri;
+  return await waitFor(
+    docUri,
+    new vscode.Position(0, 0),
+    getCompletionList,
+    (complList) => complList !== null && complList !== undefined,
+  );
 }
 
 export async function updateSettings(settings: Partial<StimulusSettings>) {
@@ -63,18 +67,36 @@ export function deleteController(path: string) {
   }
 }
 
-export async function sleep(ms: number) {
+export function getDocUri(p: string) {
+  return vscode.Uri.file(getDocPath(p));
+}
+
+export async function waitFor<T>(
+  docUri: vscode.Uri,
+  position: vscode.Position,
+  fn: (docUri: vscode.Uri, position: vscode.Position) => Promise<T>,
+  predicate: (arg: T) => boolean,
+  timeout = MAX_TIMEOUT,
+): Promise<T> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const res: T = await fn(docUri, position);
+
+    if (predicate(res)) {
+      return res;
+    }
+
+    await sleep(POLL_TIMEOUT);
+  }
+
+  throw new Error('Timed out waiting for function to match predicate');
+}
+
+async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const getDocPath = (p: string) => {
+function getDocPath(p: string) {
   return path.resolve(__dirname, '../../testFixture', p);
-};
-export const getDocUri = (p: string) => {
-  return vscode.Uri.file(getDocPath(p));
-};
-
-export async function setTestContent(content: string): Promise<boolean> {
-  const all = new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length));
-  return editor.edit((eb) => eb.replace(all, content));
 }
