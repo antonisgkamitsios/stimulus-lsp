@@ -21,10 +21,12 @@ export class ControllersStore {
   workspaceRoot!: string;
   connection: Connection;
   #controllers: Map<ControllerPath, ControllerInfo>;
+  hasErrored: boolean;
 
   constructor(connection: Connection) {
     this.connection = connection;
     this.#controllers = new Map<ControllerPath, ControllerInfo>();
+    this.hasErrored = false;
   }
 
   async populateControllers(settings: StimulusSettings) {
@@ -44,6 +46,7 @@ export class ControllersStore {
   }
 
   clear() {
+    this.hasErrored = false;
     this.#controllers.clear();
   }
 
@@ -103,6 +106,7 @@ export class ControllersStore {
       walkDir(fullPath);
     } catch (error) {
       this.connection.console.log(`[readControllers] Error reading controllers: ${error}`);
+      this.hasErrored = true;
     }
   }
 }

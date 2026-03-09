@@ -60,6 +60,10 @@ export function activate(context: ExtensionContext) {
   // Create the language client and start the client.
   client = new LanguageClient(LSP_ID, 'Stimulus LSP', serverOptions, clientOptions);
 
+  client.onNotification('stimulus/show_output', () => {
+    outputChannel.show();
+  });
+
   // Start the client. This will also launch the server
   client.start();
   outputChannel.appendLine('Stimulus LSP Server started');

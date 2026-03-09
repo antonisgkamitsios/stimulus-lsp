@@ -57,6 +57,13 @@ async function updateControllers(shouldClear = false) {
   if (shouldClear) controllersStore.clear();
   controllersStore.populateControllers(settings);
   cachedSettings = settings;
+  if (controllersStore.hasErrored) {
+    connection.window.showErrorMessage('Controller parsing failed', { title: 'Show error' }).then((selection) => {
+      if (selection?.title === 'Show error') {
+        connection.sendNotification('stimulus/show_output');
+      }
+    });
+  }
 }
 
 let hasConfigurationCapability = false;
