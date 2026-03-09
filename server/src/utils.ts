@@ -1,6 +1,10 @@
 import * as path from 'path';
 import { URI } from 'vscode-uri';
 
+export function dasherize(str: string): string {
+  return str.replace(/([A-Z])/g, (char) => `-${char.toLowerCase()}`);
+}
+
 export function stripFilePrefix(uri: string): string {
   return URI.parse(uri).fsPath;
 }

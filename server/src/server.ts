@@ -228,12 +228,12 @@ connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<
 
   // Create completion items from controllers
   const completions: CompletionItem[] = [];
-  controllersStore.forEach((controllerIdentifier, controllerPath) =>
+  controllersStore.forEach((controllerInfo, controllerPath) =>
     completions.push({
-      label: controllerIdentifier,
+      label: controllerInfo.identifier,
       kind: CompletionItemKind.Class,
       detail: path.relative(workspaceRoot, controllerPath),
-      insertText: controllerIdentifier,
+      insertText: controllerInfo.identifier,
     }),
   );
 
