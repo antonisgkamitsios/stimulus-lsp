@@ -194,10 +194,8 @@ connection.onDidChangeWatchedFiles(async (change) => {
 
       switch (change.type) {
         case FileChangeType.Created:
-          controllersStore.addController(fullControllerPath, controllerIdentifier);
-
-          break;
         case FileChangeType.Changed:
+          controllersStore.addController(fullControllerPath, controllerIdentifier);
           break;
         case FileChangeType.Deleted:
           controllersStore.deleteController(fullControllerPath);
