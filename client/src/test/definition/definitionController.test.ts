@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as assert from 'assert';
-import { activateExtension, openDoc, updateSettings, resetSettings, waitFor } from './helper';
+import { activateExtension, openDoc, updateSettings, resetSettings, waitFor } from '../helper';
 
 describe('Definition', () => {
   before(async () => {
@@ -65,10 +65,10 @@ async function waitForDefinition(
 }
 
 async function triggerDefinition(docUri: vscode.Uri, position: vscode.Position): Promise<vscode.Location[] | null> {
-  const test = await vscode.commands.executeCommand<vscode.Location[] | null>(
+  const definitionCmd = await vscode.commands.executeCommand<vscode.Location[] | null>(
     'vscode.executeDefinitionProvider',
     docUri,
     position,
   );
-  return test;
+  return definitionCmd;
 }

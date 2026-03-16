@@ -64,10 +64,29 @@ export class ControllerCompletionProvider implements IHTMLDataProvider {
       }));
     }
 
+    const targetMatch = attribute.match(/data-(.+)-target/);
+    if (targetMatch && targetMatch[1]) {
+      const identifier = targetMatch[1];
+
+      return this.#getControllerTargets(identifier);
+    }
+
     return [];
   }
 
   provideTags(): ITagData[] {
     return [];
+  }
+
+  #getControllerTargets(identifier: string): IValueData[] {
+    const data: IValueData[] = [];
+
+    this.#controllersStore.getControllerInfosByIdentifier(identifier).forEach((controllerInfo) => {
+      controllerInfo.targets.forEach((val) => {
+        data.push({ name: val.name, description: controllerInfo.relativePath });
+      });
+    });
+
+    return data;
   }
 }

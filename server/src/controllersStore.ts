@@ -61,14 +61,15 @@ export class ControllersStore {
   }
 
   getControllerPathByIdentifier(identifier: ControllerIdentifier): ControllerPath[] {
-    const controllerPaths: ControllerPath[] = [];
-    this.#controllers.forEach((info, path) => {
-      if (info.identifier == identifier) {
-        controllerPaths.push(path);
-      }
-    });
+    const [controllerPaths] = this.#getControllersByIdentifier(identifier);
 
     return controllerPaths;
+  }
+
+  getControllerInfosByIdentifier(identifier: ControllerIdentifier): ControllerInfo[] {
+    const [, controllerInfos] = this.#getControllersByIdentifier(identifier);
+
+    return controllerInfos;
   }
 
   get controllerInfos(): ControllerInfo[] {
@@ -77,6 +78,20 @@ export class ControllersStore {
 
   getFullPathToControllersDir(controllersDir: string): string {
     return path.isAbsolute(controllersDir) ? controllersDir : path.join(this.workspaceRoot, controllersDir);
+  }
+
+  #getControllersByIdentifier(identifier: ControllerIdentifier): [ControllerPath[], ControllerInfo[]] {
+    const controllerPaths: ControllerPath[] = [];
+    const controllerInfos: ControllerInfo[] = [];
+
+    this.#controllers.forEach((info, path) => {
+      if (info.identifier == identifier) {
+        controllerPaths.push(path);
+        controllerInfos.push(info);
+      }
+    });
+
+    return [controllerPaths, controllerInfos];
   }
 
   #parseControllers(controllersDir: string, glob: Glob) {

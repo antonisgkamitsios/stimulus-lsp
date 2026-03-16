@@ -7,10 +7,11 @@ import {
   resetSettings,
   createController,
   deleteController,
-  waitFor,
-} from './helper';
+  waitForCompletions,
+  triggerAutoComplete,
+} from '../helper';
 
-describe('Completion', () => {
+describe('data-controller completion', () => {
   before(async () => {
     await activateExtension();
   });
@@ -81,24 +82,3 @@ describe('Completion', () => {
     });
   });
 });
-
-async function waitForCompletions(
-  docUri: vscode.Uri,
-  position: vscode.Position,
-  predicate: (completions: string[]) => boolean,
-): Promise<string[]> {
-  return waitFor(docUri, position, triggerAutoComplete, predicate);
-}
-
-async function triggerAutoComplete(docUri: vscode.Uri, position: vscode.Position): Promise<string[]> {
-  // Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
-  const actualCompletionList = (await vscode.commands.executeCommand(
-    'vscode.executeCompletionItemProvider',
-    docUri,
-    position,
-  )) as vscode.CompletionList;
-
-  return actualCompletionList.items
-    .filter((item) => item.kind !== vscode.CompletionItemKind.Text)
-    .map((item) => item.label.toString());
-}
