@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { StimulusSettings } from 'shared';
 import { URI } from 'vscode-uri';
 
 export function dasherize(str: string): string {
@@ -23,12 +24,6 @@ export function controllerIdentifierFromPath(filePath: string, baseName: string)
   return controllerName;
 }
 
-export function getFullControllersPaths(workspaceRoot: string, controllersDirs: string[]): string[] {
-  return controllersDirs.map((controllerDir) =>
-    path.isAbsolute(controllerDir) ? controllerDir : path.join(workspaceRoot, controllerDir),
-  );
-}
-
 export function getFullAndRelativeControllerPath(fileUri: string, fullControllersPaths: string[]): string[] {
   let fullControllerPath = '';
   let relativeControllerPath = '';
@@ -43,4 +38,10 @@ export function getFullAndRelativeControllerPath(fileUri: string, fullController
   });
 
   return [fullControllerPath, relativeControllerPath];
+}
+
+export function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusSettings): boolean {
+  if (!cached) return false;
+
+  return JSON.stringify(cached) === JSON.stringify(settings);
 }

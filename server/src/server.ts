@@ -1,5 +1,3 @@
-import * as path from 'path';
-
 import {
   createConnection,
   TextDocuments,
@@ -7,7 +5,6 @@ import {
   InitializeParams,
   DidChangeConfigurationNotification,
   CompletionItem,
-  CompletionItemKind,
   TextDocumentPositionParams,
   TextDocumentSyncKind,
   InitializeResult,
@@ -18,6 +15,7 @@ import {
   CompletionParams,
   DidChangeWatchedFilesNotification,
   Disposable,
+  CompletionItemKind,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -25,12 +23,14 @@ import { StimulusSettings, LSP_ID, defaultSettings } from 'shared';
 import {
   controllerIdentifierFromPath,
   getFullAndRelativeControllerPath,
-  getFullControllersPaths,
   normalizePath,
+  settingsEqual,
   stripFilePrefix,
 } from './utils';
 import { ControllersStore } from './controllersStore';
 import { Glob } from './glob';
+import { ControllerCompletionProvider } from './controllerCompletionProvider';
+import { getLanguageService } from 'vscode-html-languageservice';
 
 let globalSettings: StimulusSettings = defaultSettings;
 let cachedSettings: StimulusSettings | undefined;
@@ -41,12 +41,11 @@ const documents = new TextDocuments(TextDocument);
 let workspaceRoot: string;
 
 const controllersStore = new ControllersStore(connection);
-
-function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusSettings): boolean {
-  if (!cached) return false;
-
-  return JSON.stringify(cached) === JSON.stringify(settings);
-}
+const controllerCompletionProvider = new ControllerCompletionProvider(LSP_ID, controllersStore);
+const controllerCompletionService = getLanguageService({
+  customDataProviders: [controllerCompletionProvider],
+  useDefaultDataProvider: false,
+});
 
 async function updateControllers(shouldClear = false) {
   const settings = await getSettings();
@@ -179,11 +178,13 @@ connection.onDidChangeWatchedFiles(async (change) => {
 
   if (hasControllerChanges) {
     changes.forEach((change) => {
-      const fullControllersPaths = getFullControllersPaths(workspaceRoot, settings.controllersDirs);
+      const fullPathToControllersDirs = settings.controllersDirs.map((controllerDir) =>
+        controllersStore.getFullPathToControllersDir(controllerDir),
+      );
 
       const [fullControllerPath, relativeControllerPath] = getFullAndRelativeControllerPath(
         change.uri,
-        fullControllersPaths,
+        fullPathToControllersDirs,
       );
       if (!relativeControllerPath) {
         return;
@@ -214,37 +215,24 @@ documents.onDidChangeContent((_change) => {
 });
 
 // This handler provides the initial list of the completion items.
-connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<CompletionItem[]> => {
+connection.onCompletion((textDocumentPosition: CompletionParams) => {
   const document = documents.get(textDocumentPosition.textDocument.uri);
   if (!document) {
-    return [];
+    return null;
   }
 
-  const text = document.getText();
-  const offset = document.offsetAt(textDocumentPosition.position);
+  const items = controllerCompletionService
+    .doComplete(document, textDocumentPosition.position, controllerCompletionService.parseHTMLDocument(document))
+    .items.map((item) => {
+      const kind =
+        item.label === 'data-controller' || item.label === 'data-action'
+          ? CompletionItemKind.Value
+          : CompletionItemKind.Class;
 
-  // Get text from the beginning of the line to current position
-  const lineStart = text.lastIndexOf('\n', offset) + 1;
-  const lineText = text.substring(lineStart, offset);
+      return { ...item, kind };
+    });
 
-  const dataControllerMatch = lineText.match(/data-controller=["']([a-z0-9-]*)$/i);
-
-  if (!dataControllerMatch) {
-    return [];
-  }
-
-  // Create completion items from controllers
-  const completions: CompletionItem[] = [];
-  controllersStore.forEach((controllerInfo, controllerPath) =>
-    completions.push({
-      label: controllerInfo.identifier,
-      kind: CompletionItemKind.Class,
-      detail: path.relative(workspaceRoot, controllerPath),
-      insertText: controllerInfo.identifier,
-    }),
-  );
-
-  return completions;
+  return items;
 });
 
 // This handler resolves additional information for the item selected in

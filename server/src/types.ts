@@ -26,3 +26,12 @@ export type Target = WithNameAndLocation;
 
 export type Class = WithNameAndLocation;
 export type Value = WithNameAndLocation;
+
+export interface ControllerInfo {
+  identifier: string;
+  relativePath: string;
+  methods: Method[];
+  values: Value[];
+  targets: Target[];
+  classes: Class[];
+}
