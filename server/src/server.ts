@@ -102,7 +102,7 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that this server supports code completion.
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: ['"', "'"],
+        triggerCharacters: ['"', "'", '#', '>', '@', ':'],
       },
       // Tell the client that this server supports go to definition.
       definitionProvider: true,
@@ -219,6 +219,14 @@ connection.onCompletion((textDocumentPosition: CompletionParams) => {
     return null;
   }
 
+  const text = document.getText();
+  const offset = document.offsetAt(textDocumentPosition.position);
+
+  // Get text from the beginning of the line to current position
+  const lineStart = text.lastIndexOf('\n', offset) + 1;
+  const lineText = text.substring(lineStart, offset);
+  controllerCompletionProvider.currentLineText = lineText;
+
   const items = controllerCompletionService
     .doComplete(document, textDocumentPosition.position, controllerCompletionService.parseHTMLDocument(document))
     .items.map((item) => {
@@ -230,7 +238,7 @@ connection.onCompletion((textDocumentPosition: CompletionParams) => {
       return { ...item, kind };
     });
 
-  return items;
+  return {isIncomplete: true, items};
 });
 
 // This handler resolves additional information for the item selected in
