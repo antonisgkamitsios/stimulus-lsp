@@ -59,15 +59,12 @@ export class ControllerCompletionProvider implements IHTMLDataProvider {
       }));
     }
 
-    // TODO: add handling for actions
     if (attribute === 'data-action') {
       return this.#calculateActions(tag);
     }
 
-    const targetMatch = attribute.match(/data-([a-z0-9-]+)-target/);
-    if (targetMatch && targetMatch[1]) {
-      const identifier = targetMatch[1];
-
+    const identifier = attribute.match(/data-([a-z0-9-]+)-target/)?.[1];
+    if (identifier) {
       return this.#getControllerTargets(identifier);
     }
 
