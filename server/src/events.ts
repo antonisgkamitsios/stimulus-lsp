@@ -124,6 +124,9 @@ export const ELEMENTS_WITH_DEFAULT_EVENTS = {
   input: 'input',
   select: 'change',
   textarea: 'input',
-};
+} as const;
 
-export const EVENT_OPTIONS = ['capture', 'once', 'passive', '!passive', 'stop', 'prevent', 'self'];
+export const EVENT_TARGETS = ['document', 'window'];
+
+export const EVENT_OPTIONS = ['capture', 'once', 'passive', '!passive', 'stop', 'prevent', 'self'] as const;
+export type EventOption = (typeof EVENT_OPTIONS)[number];

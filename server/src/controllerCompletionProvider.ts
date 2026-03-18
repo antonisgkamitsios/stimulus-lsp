@@ -1,6 +1,7 @@
 import { IAttributeData, IHTMLDataProvider, ITagData, IValueData } from 'vscode-html-languageservice';
 import { ControllersStore } from './controllersStore';
 import { ELEMENTS_WITH_DEFAULT_EVENTS, EVENT_OPTIONS, EVENTS } from './events';
+import { ActionParser } from './actionParser';
 
 export class ControllerCompletionProvider implements IHTMLDataProvider {
   #id: string;
@@ -92,67 +93,64 @@ export class ControllerCompletionProvider implements IHTMLDataProvider {
   #calculateActions(tag: string): IValueData[] {
     const data: IValueData[] = [];
 
-    // add the events
-    EVENTS.forEach((event) => {
-      data.push({ name: event });
-    });
-
-    // tag contains default event, so we add the identifiers
-    if (ELEMENTS_WITH_DEFAULT_EVENTS[tag as keyof typeof ELEMENTS_WITH_DEFAULT_EVENTS]) {
-      this.controllers.forEach((controllerInfo) => {
-        data.push({ name: controllerInfo.identifier, description: controllerInfo.relativePath });
-      });
-    }
-
     const dataActionValue = this.currentLineText.match(/data-action=["']([^"']*)$/i)?.[1];
-    if (!dataActionValue) return data;
+    if (dataActionValue === undefined) return data;
 
     const actions = dataActionValue.split(/\s+/);
     const currentAction = actions[actions.length - 1];
 
-    // handle global events
-    if (currentAction.includes('@')) {
-      const eventPrefix = this.#getPrefixTill(currentAction, '@');
-      const event = eventPrefix.split('.')[0];
-      if (EVENTS.includes(event)) {
+    const res = new ActionParser(currentAction);
+
+    if (!res.valid) return data;
+
+    switch (res.cursorOn) {
+      case 'eventOrIdentifier': {
+        EVENTS.forEach((event) => {
+          data.push({ name: event });
+        });
+
+        // tag contains default event, so we add the identifiers
+        if (ELEMENTS_WITH_DEFAULT_EVENTS[tag as keyof typeof ELEMENTS_WITH_DEFAULT_EVENTS]) {
+          this.controllers.forEach((controllerInfo) => {
+            data.push({ name: controllerInfo.identifier, description: controllerInfo.relativePath });
+          });
+        }
+        break;
+      }
+      case 'target': {
         ['window', 'document'].forEach((elem) => {
-          data.push({ name: `${eventPrefix}@${elem}` });
+          data.push({ name: `${res.prefixValue}${elem}` });
+        });
+        break;
+      }
+      case 'identifier': {
+        this.controllers.forEach((controllerInfo) => {
+          data.push({
+            name: `${res.prefixValue}${controllerInfo.identifier}`,
+            description: controllerInfo.relativePath,
+          });
+        });
+        break;
+      }
+      case 'method': {
+        if (!res.identifier) return data;
+
+        this.#controllersStore.getControllerInfosByIdentifier(res.identifier).forEach((controllerInfo) => {
+          controllerInfo.methods.forEach((method) => {
+            data.push({ name: `${res.prefixValue}${method.name}`, description: controllerInfo.relativePath });
+          });
+        });
+        break;
+      }
+      case 'option': {
+        EVENT_OPTIONS.forEach((opt) => {
+          data.push({
+            name: `${res.prefixValue}:${opt}`,
+          });
         });
       }
     }
 
-    if (currentAction.includes('->')) {
-      const eventPrefix = this.#getPrefixTill(currentAction, '->');
-      this.controllers.forEach((controllerInfo) => {
-        data.push({ name: `${eventPrefix}->${controllerInfo.identifier}`, description: controllerInfo.relativePath });
-      });
-    }
-
-    if (currentAction.includes('#')) {
-      const controllerIdentifier = currentAction.match(/(?:->)?([a-z0-9-]+)#/)?.[1];
-      if (!controllerIdentifier) return data;
-
-      const actionPrefix = this.#getPrefixTill(currentAction, '#');
-      this.#controllersStore.getControllerInfosByIdentifier(controllerIdentifier).forEach((controllerInfo) => {
-        controllerInfo.methods.forEach((method) => {
-          data.push({ name: `${actionPrefix}#${method.name}`, description: controllerInfo.relativePath });
-        });
-      });
-    }
-
-    if (currentAction.includes(':')) {
-      const actionPrefix = this.#getPrefixTill(currentAction, ':');
-      EVENT_OPTIONS.forEach((opt) => {
-        data.push({
-          name: `${actionPrefix}:${opt}`,
-        });
-      });
-    }
-
     return data;
-  }
-
-  #getPrefixTill(str: string, chars: string): string {
-    return str.substring(0, str.indexOf(chars));
   }
 }
