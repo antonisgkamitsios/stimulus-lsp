@@ -1,6 +1,6 @@
 import { IAttributeData, IHTMLDataProvider, ITagData, IValueData } from 'vscode-html-languageservice';
 import { ControllersStore } from './controllersStore';
-import { ELEMENTS_WITH_DEFAULT_EVENTS, EVENTS } from './events';
+import { ELEMENTS_WITH_DEFAULT_EVENTS, EVENT_OPTIONS, EVENTS } from './events';
 
 export class ControllerCompletionProvider implements IHTMLDataProvider {
   #id: string;
@@ -136,6 +136,15 @@ export class ControllerCompletionProvider implements IHTMLDataProvider {
       this.#controllersStore.getControllerInfosByIdentifier(controllerIdentifier).forEach((controllerInfo) => {
         controllerInfo.methods.forEach((method) => {
           data.push({ name: `${actionPrefix}#${method.name}`, description: controllerInfo.relativePath });
+        });
+      });
+    }
+
+    if (currentAction.includes(':')) {
+      const actionPrefix = this.#getPrefixTill(currentAction, ':');
+      EVENT_OPTIONS.forEach((opt) => {
+        data.push({
+          name: `${actionPrefix}:${opt}`,
         });
       });
     }

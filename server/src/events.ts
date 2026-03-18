@@ -125,3 +125,5 @@ export const ELEMENTS_WITH_DEFAULT_EVENTS = {
   select: 'change',
   textarea: 'input',
 };
+
+export const EVENT_OPTIONS = ['capture', 'once', 'passive', '!passive', 'stop', 'prevent', 'self'];
