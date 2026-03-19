@@ -49,7 +49,6 @@ const controllerCompletionService = getLanguageService({
 
 async function updateControllers(shouldClear = false) {
   const settings = await getSettings();
-  connection.console.log(settings.activationLanguages.join(', '));
 
   if (settingsEqual(cachedSettings, settings)) return;
 
@@ -157,8 +156,6 @@ connection.onDidChangeConfiguration(async (change) => {
     globalSettings = change.settings.stimulus || defaultSettings;
   }
 
-  connection.console.log('conf change fired');
-
   await updateFileWatcher();
 
   await updateControllers(true);
@@ -208,7 +205,7 @@ connection.onDidChangeWatchedFiles(async (change) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent((_change) => {
-  connection.console.log('onDidChangeContent');
+  // connection.console.log('onDidChangeContent');
   // Diagnostics will be provided through the diagnostics endpoint
 });
 
@@ -238,7 +235,7 @@ connection.onCompletion((textDocumentPosition: CompletionParams) => {
       return { ...item, kind };
     });
 
-  return {isIncomplete: true, items};
+  return { isIncomplete: true, items };
 });
 
 // This handler resolves additional information for the item selected in
@@ -289,7 +286,7 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
   }
 
   // Find the controller file(s)
-  const controllerPaths = controllersStore.getControllerPathByIdentifier(word);
+  const controllerPaths = controllersStore.getControllerPathsByIdentifier(word);
   if (controllerPaths.length === 0) {
     return null;
   }

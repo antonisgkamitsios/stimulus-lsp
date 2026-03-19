@@ -87,8 +87,6 @@ export async function triggerAutoComplete(docUri: vscode.Uri, position: vscode.P
     position,
   )) as vscode.CompletionList;
 
-  console.log(actualCompletionList.items);
-
   return actualCompletionList.items
     .filter((item) => item.kind !== vscode.CompletionItemKind.Text)
     .map((item) => item.label.toString());

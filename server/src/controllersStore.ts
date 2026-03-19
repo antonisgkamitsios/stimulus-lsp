@@ -60,7 +60,7 @@ export class ControllersStore {
     this.#controllers.delete(key);
   }
 
-  getControllerPathByIdentifier(identifier: ControllerIdentifier): ControllerPath[] {
+  getControllerPathsByIdentifier(identifier: ControllerIdentifier): ControllerPath[] {
     const [controllerPaths] = this.#getControllersByIdentifier(identifier);
 
     return controllerPaths;
@@ -99,7 +99,9 @@ export class ControllersStore {
 
     try {
       if (!fs.existsSync(fullPathToControllersDir)) {
-        this.connection.console.log(`[readControllers] Directory does not exist: ${fullPathToControllersDir}`);
+        this.connection.console.log(`[readControllers] Directory does not exist: ${fullPathToControllersDir}.
+          Perhaps you want to update the "stimulus.controllersDirs": ["${controllersDir}"] in your vscode settings`);
+        this.hasErrored = true;
         return [];
       }
 
