@@ -100,7 +100,7 @@ export class ControllersStore {
     try {
       if (!fs.existsSync(fullPathToControllersDir)) {
         this.connection.console.log(`[readControllers] Directory does not exist: ${fullPathToControllersDir}.
-          Perhaps you want to update the "stimulus.controllersDirs": ["${controllersDir}"] in your vscode settings`);
+          Perhaps you want to update the "stimulus.controllersDirs": [...] in your vscode settings`);
         this.hasErrored = true;
         return [];
       }
