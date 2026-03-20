@@ -145,11 +145,11 @@ export class ControllerParser {
 
     obj.loc = {
       start: {
-        line: loc.start.line,
+        line: loc.start.line - 1,
         character: loc.start.column,
       },
       end: {
-        line: loc.end.line,
+        line: loc.end.line - 1,
         character: loc.end.column,
       },
     };
