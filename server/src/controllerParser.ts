@@ -31,9 +31,13 @@ export class ControllerParser {
     this.#sourceCode = sourceCode;
     this.#filePath = filePath;
 
+    // method name is as is in js
     this.methods = [];
+    // target name is as is in js
     this.targets = [];
+    // value name is dasherized
     this.values = [];
+    // class name is dasherized
     this.classes = [];
   }
 

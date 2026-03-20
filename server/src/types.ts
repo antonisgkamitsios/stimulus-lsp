@@ -29,6 +29,7 @@ export type Value = WithNameAndLocation;
 
 export interface ControllerInfo {
   identifier: string;
+  fullPath: string;
   relativePath: string;
   methods: Method[];
   values: Value[];

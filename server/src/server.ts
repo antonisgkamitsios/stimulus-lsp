@@ -23,7 +23,6 @@ import { StimulusSettings, LSP_ID, defaultSettings } from 'shared';
 import {
   controllerIdentifierFromPath,
   getFullAndRelativeControllerPath,
-  normalizePath,
   settingsEqual,
   stripFilePrefix,
 } from './utils';
@@ -31,6 +30,7 @@ import { ControllersStore } from './controllersStore';
 import { Glob } from './glob';
 import { ControllerCompletionProvider } from './controllerCompletionProvider';
 import { getLanguageService } from 'vscode-html-languageservice';
+import { ControllerDefinitionProvider } from './controllerDefinitionProvider';
 
 let globalSettings: StimulusSettings = defaultSettings;
 let cachedSettings: StimulusSettings | undefined;
@@ -46,6 +46,7 @@ const controllerCompletionService = getLanguageService({
   customDataProviders: [controllerCompletionProvider],
   useDefaultDataProvider: false,
 });
+const controllerDefinitionProvider = new ControllerDefinitionProvider(controllersStore);
 
 async function updateControllers(shouldClear = false) {
   const settings = await getSettings();
@@ -245,7 +246,7 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
 });
 
 // This handler provides the definition (go to definition) for a symbol
-connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams): Promise<Location[] | null> => {
+connection.onDefinition((textDocumentPosition: TextDocumentPositionParams): Location[] | null => {
   const document = documents.get(textDocumentPosition.textDocument.uri);
   if (!document) {
     connection.console.log('[Definition] No document found');
@@ -261,50 +262,7 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
   const lineText = text.substring(lineStart, lineEnd === -1 ? text.length : lineEnd);
   const posInLine = offset - lineStart;
 
-  // Check if we're in a data-controller attribute
-  if (!lineText.includes('data-controller')) {
-    connection.console.log('[Definition] Not in data-controller attribute');
-    return null;
-  }
-
-  // Extract word at cursor
-  let wordStart = posInLine;
-  let wordEnd = posInLine;
-
-  // Find word boundaries
-  while (wordStart > 0 && /[a-z0-9-]/i.test(lineText[wordStart - 1])) {
-    wordStart--;
-  }
-  while (wordEnd < lineText.length && /[a-z0-9-]/i.test(lineText[wordEnd])) {
-    wordEnd++;
-  }
-
-  const word = lineText.substring(wordStart, wordEnd);
-
-  if (!word || word.length === 0) {
-    return null;
-  }
-
-  // Find the controller file(s)
-  const controllerPaths = controllersStore.getControllerPathsByIdentifier(word);
-  if (controllerPaths.length === 0) {
-    return null;
-  }
-
-  const locations = controllerPaths.map((path) => {
-    const normalizedPath = normalizePath(path);
-    const fileUri = normalizedPath.startsWith('/') ? 'file://' + normalizedPath : 'file:///' + normalizedPath;
-
-    return {
-      uri: fileUri,
-      range: {
-        start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
-      },
-    };
-  });
-
-  return locations;
+  return controllerDefinitionProvider.doProvide(lineText, posInLine);
 });
 
 connection.languages.diagnostics.on(async (_params) => {
