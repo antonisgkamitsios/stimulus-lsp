@@ -75,9 +75,43 @@ export class ControllerDefinitionProvider {
     );
   }
 
-  #provideDataOutletDefinitions(_attribute: string): Location[] | null {
+  #provideDataOutletDefinitions(attribute: string): Location[] | null {
     // data-(identifier)-(identifier)-outlet
-    //    ^     ^                 ^      ^
+
+    // data-foo--bar-baz--bam-outlet
+    // inner => foo--bar-baz--bam
+
+    const dataPrefixLength = 'data-'.length;
+    const inner = attribute.slice(dataPrefixLength, -'-outlet'.length);
+    const innerPos = this.#relPos - dataPrefixLength;
+    // we are outside of the bounds so we return the location of the main controller + it's outlet
+    if (innerPos < 0 || innerPos > inner.length - 1) {
+      return this.#parseAttributeToLocations(
+        attribute,
+        'outlet',
+        (info, outletName) => info.outlets.find((o) => o.name === outletName)?.loc,
+      );
+    }
+
+    // first we walk to the right until we find a matching identifier
+    for (let i = innerPos; i < inner.length - 1; i++) {
+      const partBeforeCursor = inner.substring(0, i);
+
+      const locations = this.#getIdentifierLocations(partBeforeCursor, () => undefined);
+      if (locations && locations.length > 0) {
+        return locations;
+      }
+    }
+
+    // then we walk to the left until we find a matching identifier
+    for (let i = innerPos; i >= 0; i--) {
+      const partAfterCursor = inner.substring(i);
+
+      const locations = this.#getIdentifierLocations(partAfterCursor, () => undefined);
+      if (locations && locations.length > 0) {
+        return locations;
+      }
+    }
 
     return null;
   }
