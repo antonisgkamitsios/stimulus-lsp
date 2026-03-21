@@ -21,11 +21,10 @@ interface WithLocation {
 export interface WithNameAndLocation extends WithName, WithLocation {}
 
 export type Method = WithNameAndLocation;
-
 export type Target = WithNameAndLocation;
-
 export type Class = WithNameAndLocation;
 export type Value = WithNameAndLocation;
+export type Outlet = WithNameAndLocation;
 
 export interface ControllerInfo {
   identifier: string;
@@ -35,4 +34,5 @@ export interface ControllerInfo {
   values: Value[];
   targets: Target[];
   classes: Class[];
+  outlets: Outlet[];
 }

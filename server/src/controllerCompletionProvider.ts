@@ -46,6 +46,12 @@ export class ControllerCompletionProvider implements IHTMLDataProvider {
           name: `data-${controllerInfo.identifier}-${klass.name}-class`,
         });
       });
+
+      controllerInfo.outlets.forEach((outlet) => {
+        attributes.push({
+          name: `data-${controllerInfo.identifier}-${outlet.name}-outlet`
+        });
+      });
     });
 
     return attributes;

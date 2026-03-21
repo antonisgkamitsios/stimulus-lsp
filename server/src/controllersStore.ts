@@ -53,6 +53,7 @@ export class ControllersStore {
       classes: parser.classes,
       targets: parser.targets,
       values: parser.values,
+      outlets: parser.outlets,
     };
     this.#controllers.set(controllerPath, controllerInfo);
   }
