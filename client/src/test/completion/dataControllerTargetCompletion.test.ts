@@ -11,7 +11,7 @@ import {
   createController,
 } from '../helper';
 
-describe('data-controller target completion', () => {
+describe('data-controller-target completion', () => {
   before(async () => {
     await activateExtension();
   });
@@ -20,11 +20,11 @@ describe('data-controller target completion', () => {
     deleteController('app/src/controllers/common/newly_created_controller.js'); // ensure we delete it if something fails
   });
 
-  const position = new vscode.Position(3, 31);
+  const position = new vscode.Position(1, 31);
 
   describe('For html files', () => {
     it('returns the correct targets', async () => {
-      const docUri = await openDoc('completionController.html');
+      const docUri = await openDoc('completion/dataTarget.html');
 
       let expectedCompletionTargets = ['firstTarget', 'secondTarget'];
       let actualCompletionTargets = await triggerAutoComplete(docUri, position);
@@ -43,14 +43,14 @@ describe('data-controller target completion', () => {
 
       // autocomplete on the common target
       expectedCompletionTargets = ['commonTarget'];
-      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(4, 25), (c) =>
+      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(2, 25), (c) =>
         c.includes('commonTarget'),
       );
       assert.deepStrictEqual(actualCompletionTargets.sort(), expectedCompletionTargets.sort());
 
       // autocomplete on the uncommon target
       expectedCompletionTargets = ['uncommonTarget'];
-      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(5, 27), (c) =>
+      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(3, 27), (c) =>
         c.includes('uncommonTarget'),
       );
       assert.deepStrictEqual(actualCompletionTargets.sort(), expectedCompletionTargets.sort());
@@ -66,26 +66,26 @@ describe('data-controller target completion', () => {
       // we add a controller
       createController('app/src/controllers/common/newly_created_controller.js', controllerContent);
       expectedCompletionTargets = ['newTarget1', 'newTarget2'];
-      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(6, 32), (c) =>
+      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(4, 32), (c) =>
         c.includes('newTarget1'),
       );
       assert.deepStrictEqual(actualCompletionTargets.sort(), expectedCompletionTargets.sort());
 
       // we delete a controller
       deleteController('app/src/controllers/common/newly_created_controller.js');
-      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(6, 32), (c) => c.length === 0);
+      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(4, 32), (c) => c.length === 0);
       assert.equal(actualCompletionTargets.length, 0);
 
       // we change the fileWatchPattern
       await updateSettings({ fileWatchPattern: '**/*-controller.{ts}' });
       expectedCompletionTargets = ['commonTsTarget'];
-      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(7, 35), (c) =>
+      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(5, 35), (c) =>
         c.includes('commonTsTarget'),
       );
       assert.deepStrictEqual(actualCompletionTargets.sort(), expectedCompletionTargets.sort());
 
       // we autocomplete on a controller that is not being watched
-      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(8, 35), (c) => c.length === 0);
+      actualCompletionTargets = await waitForCompletions(docUri, new vscode.Position(6, 35), (c) => c.length === 0);
       // it does not return any targets
       assert.equal(actualCompletionTargets.length, 0);
     });

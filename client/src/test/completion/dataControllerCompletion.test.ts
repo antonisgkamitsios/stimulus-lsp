@@ -22,7 +22,7 @@ describe('data-controller completion', () => {
 
   describe('For html files', () => {
     it('returns the correct controllers', async () => {
-      const docUri = await openDoc('completionController.html');
+      const docUri = await openDoc('completion/dataController.html');
 
       let expectedCompletionControllers = ['test', 'nested--test', 'nested--with-multiple-gaps'];
       let actualCompletionControllers = await triggerAutoComplete(docUri, new vscode.Position(1, 22));
@@ -74,7 +74,7 @@ describe('data-controller completion', () => {
 
   describe('For erb files', () => {
     it('does not return controllers', async () => {
-      const docUri = await openDoc('completionController.erb');
+      const docUri = await openDoc('completion/dataController.erb');
 
       const actualCompletionControllers = await triggerAutoComplete(docUri, new vscode.Position(1, 22));
 

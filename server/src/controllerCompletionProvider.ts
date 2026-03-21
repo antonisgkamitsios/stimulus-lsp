@@ -148,7 +148,7 @@ export class ControllerCompletionProvider implements IHTMLDataProvider {
       case 'option': {
         EVENT_OPTIONS.forEach((opt) => {
           data.push({
-            name: `${res.prefixValue}:${opt}`,
+            name: `${res.prefixValue}${opt}`,
           });
         });
       }

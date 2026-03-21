@@ -101,8 +101,9 @@ export async function waitFor<T>(
 ): Promise<T> {
   const start = Date.now();
 
+  let res: T;
   while (Date.now() - start < timeout) {
-    const res: T = await fn(docUri, position);
+    res = await fn(docUri, position);
 
     if (predicate(res)) {
       return res;
@@ -111,7 +112,8 @@ export async function waitFor<T>(
     await sleep(POLL_TIMEOUT);
   }
 
-  throw new Error('Timed out waiting for function to match predicate');
+  // @ts-expect-error its not used before initialized, whe while loop will always happen once
+  throw new Error(`Timed out waiting for function to match predicate.\nThe returned values were: \n${res}`);
 }
 
 async function sleep(ms: number) {
