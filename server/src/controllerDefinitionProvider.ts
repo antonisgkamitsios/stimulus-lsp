@@ -26,7 +26,25 @@ export class ControllerDefinitionProvider {
     const dataAttributeDefinitions = this.#definitionForAttributes(word);
     if (dataAttributeDefinitions && dataAttributeDefinitions.length > 0) return dataAttributeDefinitions;
 
-    // todo here we will add value
+    const dataAttributeAndValue = this.#findDataAttributeAndValue(source, pos);
+
+    if (!dataAttributeAndValue) return null;
+    return this.#definitionForValues(dataAttributeAndValue.dataAttribute, dataAttributeAndValue.value);
+  }
+
+  #definitionForValues(attribute: string, value: string): Location[] | null {
+    if (attribute === 'data-controller') {
+      return this.#getIdentifierLocations(value);
+    }
+
+    const dataTargetIdentifier = attribute.match(/data-([a-z0-9-]+)-target/)?.[1];
+    if (dataTargetIdentifier) {
+      return this.#getIdentifierLocations(
+        dataTargetIdentifier,
+        (info) => info.targets.find((t) => t.name === value)?.loc,
+      );
+    }
+
     return null;
   }
 
@@ -97,7 +115,7 @@ export class ControllerDefinitionProvider {
     for (let i = innerPos; i < inner.length - 1; i++) {
       const partBeforeCursor = inner.substring(0, i);
 
-      const locations = this.#getIdentifierLocations(partBeforeCursor, () => undefined);
+      const locations = this.#getIdentifierLocations(partBeforeCursor);
       if (locations && locations.length > 0) {
         return locations;
       }
@@ -107,7 +125,7 @@ export class ControllerDefinitionProvider {
     for (let i = innerPos; i >= 0; i--) {
       const partAfterCursor = inner.substring(i);
 
-      const locations = this.#getIdentifierLocations(partAfterCursor, () => undefined);
+      const locations = this.#getIdentifierLocations(partAfterCursor);
       if (locations && locations.length > 0) {
         return locations;
       }
@@ -136,7 +154,7 @@ export class ControllerDefinitionProvider {
     return null;
   }
 
-  #getIdentifierLocations(identifier: string, locFunc: LocFunc): Location[] | null {
+  #getIdentifierLocations(identifier: string, locFunc?: LocFunc): Location[] | null {
     const controllerInfos = this.#controllerStore.getControllerInfosByIdentifier(identifier);
 
     if (controllerInfos.length === 0) {
@@ -144,7 +162,7 @@ export class ControllerDefinitionProvider {
     }
 
     return controllerInfos.map((info) => {
-      const location = locFunc(info) || this.#defaultLoc;
+      const location = locFunc?.(info) || this.#defaultLoc;
       return this.#provideLocation(info.fullPath, location);
     });
   }
@@ -179,8 +197,46 @@ export class ControllerDefinitionProvider {
     }
 
     this.#relPos = pos - wordStart;
-    console.log(this.#relPos);
 
     return word;
+  }
+
+  #findDataAttributeAndValue(source: string, pos: number): { dataAttribute: string; value: string } | null {
+    let startPos = pos;
+    let endPos = pos;
+
+    const endChars = ["'", '"', ' '];
+
+    // walk left and right until we find the range of the value
+    while (startPos > 0 && !endChars.includes(source[startPos - 1])) {
+      startPos--;
+    }
+    while (endPos < source.length && !endChars.includes(source[endPos])) {
+      endPos++;
+    }
+    const value = source.substring(startPos, endPos);
+
+    // walk left until we find `=`
+    while (startPos > 0 && source[startPos] !== '=') {
+      startPos--;
+    }
+    if (source[startPos] !== '=') return null;
+
+    // walk left until we find first character
+    while (startPos > 0 && /[a-z0-9-]/i.test(source[startPos])) {
+      startPos--;
+    }
+    // `=` was at the start of the source
+    if (startPos === 0) return null;
+
+    endPos = startPos;
+    // walk left until we find the end of the data attribute
+    while (startPos > 0 && /[a-z0-9-]/i.test(source[startPos - 1])) {
+      startPos--;
+    }
+
+    const dataAttribute = source.substring(startPos, endPos);
+
+    return { dataAttribute, value };
   }
 }
