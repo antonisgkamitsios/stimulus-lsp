@@ -60,6 +60,8 @@ describe('ControllerParser', () => {
           interval: Number,
           params: Object,
         };
+
+        static outlets = ['user-status', 'admin--user-status']
       }
     `;
 
@@ -136,6 +138,30 @@ describe('ControllerParser', () => {
               loc: {
                 start: { line: 11, character: 4 },
                 end: { line: 11, character: 10 },
+              },
+            },
+          ]),
+        );
+      });
+    });
+
+    describe('outlets', () => {
+      it('returns the correct outlets', () => {
+        expect(parser.outlets).toHaveLength(2);
+        expect(parser.outlets).toEqual(
+          expect.arrayContaining([
+            {
+              name: 'user-status',
+              loc: {
+                start: { line: 14, character: 20 },
+                end: { line: 14, character: 33 },
+              },
+            },
+            {
+              name: 'admin--user-status',
+              loc: {
+                start: { line: 14, character: 35 },
+                end: { line: 14, character: 55 },
               },
             },
           ]),
