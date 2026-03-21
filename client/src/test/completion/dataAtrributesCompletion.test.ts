@@ -17,7 +17,7 @@ describe('data attributes completion', () => {
       const docUri = await openDoc('completion/dataAttributes.html');
 
       // we change setting
-      await updateSettings({ controllersDirs: ['./app/controllers/attributeTesting'] });
+      await updateSettings({ controllersDirs: ['./app/attributeTesting'] });
 
       let actualCompletionAttributes = await waitForCompletions(docUri, new vscode.Position(1, 10), (c) =>
         c.includes('data-foo-target'),
