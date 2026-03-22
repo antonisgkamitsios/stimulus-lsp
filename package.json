@@ -73,7 +73,7 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
-		"compile": "npm run compile --workspace=shared && npm run compile --workspace=client && npm run compile --workspace=server",
+		"compile": "pnpm -r run compile",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
 		"test": "sh ./scripts/e2e.sh"
