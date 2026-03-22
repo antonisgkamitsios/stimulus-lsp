@@ -121,5 +121,5 @@ async function sleep(ms: number) {
 }
 
 function getDocPath(p: string) {
-  return path.resolve(__dirname, '../../testFixture', p);
+  return path.resolve(__dirname, '../../../testFixture', p);
 }

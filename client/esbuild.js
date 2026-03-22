@@ -1,11 +1,19 @@
-import { build } from 'esbuild';
+import esbuild from 'esbuild';
+import { glob } from 'glob';
 
-build({
-  entryPoints: ['src/extension.ts'],
-  bundle: true,
-  outfile: 'out/extension.js',
-  external: ['vscode'],
-  format: 'cjs',
-  platform: 'node',
-  sourcemap: true,
-});
+async function build() {
+  const entryPoints = await glob('src/**/*.ts');
+
+  await esbuild.build({
+    entryPoints,
+    bundle: true,
+    outdir: 'out',
+    outbase: 'src',
+    external: ['vscode', 'mocha'],
+    format: 'cjs',
+    platform: 'node',
+    sourcemap: true,
+  });
+}
+
+build();
