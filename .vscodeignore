@@ -10,4 +10,16 @@ server/src/**
 **/*.map
 .gitignore
 
-!server/out/node_modules/**
+!server/node_modules/vscode-html-languageservice/**
+!server/node_modules/@vscode/l10n/**
+!server/node_modules/vscode-languageserver/**
+!server/node_modules/vscode-languageserver-protocol/**
+!server/node_modules/vscode-languageserver-types/**
+!server/node_modules/vscode-languageserver-textdocument/**
+!server/node_modules/vscode-jsonrpc/**
+!server/node_modules/vscode-uri/**
+!server/node_modules/@typescript-eslint/typescript-estree/**
+!server/node_modules/@typescript-eslint/types/**
+!server/node_modules/@typescript-eslint/visitor-keys/**
+!server/node_modules/acorn/**
+!server/node_modules/acorn-walk/**
