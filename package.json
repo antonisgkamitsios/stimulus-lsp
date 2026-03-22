@@ -72,7 +72,7 @@
 		]
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
+		"vscode:prepublish": "pnpm compile",
 		"compile": "pnpm -r run compile",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
