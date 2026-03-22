@@ -1,5 +1,5 @@
 {
-	"name": "stimulus-lsp",
+	"name": "stimulsp",
 	"description": "A simple stimulus lsp",
 	"author": "Antonis Gkamitsios",
 	"license": "MIT",
@@ -57,7 +57,6 @@
 				"autoInsert": true
 			}
 		]
-		
 	},
 	"workspaces": [
 		"client",
@@ -76,6 +75,7 @@
 		"@stylistic/eslint-plugin": "^2.9.0",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^22",
+		"esbuild": "^0.27.4",
 		"eslint": "^9.13.0",
 		"mocha": "^10.3.0",
 		"typescript": "^5.9.2",

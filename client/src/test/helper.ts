@@ -12,7 +12,7 @@ const POLL_TIMEOUT = 50;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function activateExtension(): Promise<vscode.Extension<any>> {
   // The extensionId is `publisher.name` from package.json
-  const ext = vscode.extensions.getExtension('antonisgkamitsios.stimulus-lsp')!;
+  const ext = vscode.extensions.getExtension('antonisgkamitsios.stimulsp')!;
   await ext.activate();
 
   return ext;

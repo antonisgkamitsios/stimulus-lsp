@@ -24,7 +24,8 @@
 	},
 	"scripts": {
 		"test": "vitest",
-		"compile": "tsc -b"
+		"compile": "npm run typecheck && node esbuild.js",
+		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"dedent": "^1.7.2",
