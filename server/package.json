@@ -3,6 +3,7 @@
 	"description": "A simple stimulus lsp",
 	"version": "1.0.0",
 	"author": "Antonis Gkamitsios",
+	"publisher": "antonisgkamitsios",
 	"license": "MIT",
 	"engines": {
 		"node": "*"

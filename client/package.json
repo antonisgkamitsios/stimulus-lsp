@@ -4,7 +4,7 @@
 	"author": "Antonis Gkamitsios",
 	"license": "MIT",
 	"version": "0.0.1",
-	"publisher": "vscode",
+	"publisher": "antonisgkamitsios",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/antonisgkamitsios/stimulus-lsp"
