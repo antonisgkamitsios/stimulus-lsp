@@ -2,20 +2,7 @@
 
 # Stimulus LSP - Language Server Protocol Extension
 
-This VS Code extension provides intelligent autocomplete for Stimulus controller names in HTML `data-controller-` attributes.
-
-## Setup
-
-### 1. Install the Extension
-
-Build and install the extension:
-
-```bash
-npm install
-npm run compile
-```
-
-Then launch in debug mode or install it in VS Code.
+A VS Code extension that provides autocomplete for your stimulus js controllers
 
 ### 2. Configure Your Controllers Directory
 
@@ -27,11 +14,11 @@ Add the following setting to your `.vscode/settings.json` or workspace settings:
 }
 ```
 
-Replace `./app/controllers` with the path to your Stimulus controllers directory.
+Replace [`./app/controllers`] with the paths to your Stimulus controllers directories.
 
 ## Features
 
-### Autocomplete for `data-controller` Attributes
+### Autocomplete for `data-controller`
 
 As you type `data-controller=""` in HTML files, the extension will:
 
@@ -39,17 +26,19 @@ As you type `data-controller=""` in HTML files, the extension will:
 2. Extract controller names and convert them to kebab-case
 3. Display them as autocomplete suggestions
 
-### Controller Name Conversion
+### Autocomplete for `data-action`
 
-The extension automatically converts file paths to Stimulus controller names:
+Type `data-action=""` and you see an the autocomplete being updated as you type.
+We support events, targets (`@document` or `@window`) controller methods + options (`:prevent` etc)
 
-- `app/controllers/dashboard_controller.ts` → `dashboard`
-- `app/controllers/admin_controller.ts` → `admin`
-- `app/controllers/form_validator_controller.ts` → `form-validator`
-- `app/controllers/admin/users_controller.ts` → `admin--users`
-- `app/controllers/nested/deep/item_controller.ts` → `nested--deep--item`
+### Autocomplete for data attributes
+Type `data-` and you see an extended list of all the values, classes, outlets, targets that your controllers support
 
-Simply start typing `data-controller=""` and press `Ctrl+Space` (or `Cmd+Space` on Mac) to see available controllers.
+### Autocomplete for `data-[identifier]-target`
+Type `data-[identifier]-target` and all the targets that are registered to that controller (matching the identifier) will show
+
+### Jump to definition for all the above
+We provide a smart jump to definition for all the cases above. and we try to jump to the correct place on the controller as well!
 
 ## Configuration
 
@@ -70,3 +59,25 @@ Simply start typing `data-controller=""` and press `Ctrl+Space` (or `Cmd+Space` 
 - **Type:** `array`
 - **Default:** `['html']`
 - **Description:** Languages that Stimulus LSP will activate on.
+
+## Setup locally
+
+### 1. Install the Extension
+
+Build and install the extension:
+
+```bash
+npm install
+npm run compile
+```
+
+Run e2e test:
+```bash
+npm run test
+```
+
+Run server tests:
+```bash
+cd server
+npm run test
+```
