@@ -9,4 +9,4 @@ export const defaultSettings: StimulusSettings = {
   activationLanguages: ['html'],
 };
 
-export const LSP_ID = 'stimulus';
+export const LSP_ID = 'stimulsp';

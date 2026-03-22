@@ -23,7 +23,7 @@ Add the following setting to your `.vscode/settings.json` or workspace settings:
 
 ```json
 {
-  "stimulus.controllersDir": "./app/controllers"
+  "stimulsp.controllersDirs": ["./app/controllers"]
 }
 ```
 
@@ -53,19 +53,19 @@ Simply start typing `data-controller=""` and press `Ctrl+Space` (or `Cmd+Space` 
 
 ## Configuration
 
-### `stimulus.controllersDirs`
+### `stimulsp.controllersDirs`
 
 - **Type:** `array`
 - **Default:** `['./app/controllers']`
 - **Description:** The directory paths (relative to workspace root) where your Stimulus controller files are located.
 
-### `stimulus.fileWatchPattern`
+### `stimulsp.fileWatchPattern`
 
 - **Type:** `string`
 - **Default:** `**/*_controller.{ts,js}`
 - **Description:** Glob pattern for files to watch for controller changes.
 
-### `stimulus.activationLanguages`
+### `stimulsp.activationLanguages`
 
 - **Type:** `array`
 - **Default:** `['html']`
