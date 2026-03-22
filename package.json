@@ -57,16 +57,23 @@
 				"autoInsert": true
 			}
 		]
-		
 	},
-	"workspaces": [
-		"client",
-		"server",
-		"shared"
-	],
+	"workspaces": {
+		"packages": [
+			"client",
+			"server",
+			"shared"
+		],
+		"nohoist": [
+			"**/server/**",
+			"**/@typescript-eslint/**",
+			"**/vscode-html-languageservice/**",
+			"**/@vscode/l10n/**"
+		]
+	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "npm run compile --workspace=shared && npm run compile --workspace=client && npm run compile --workspace=server",
+		"vscode:prepublish": "pnpm compile",
+		"compile": "pnpm -r run compile",
 		"watch": "tsc -b -w",
 		"lint": "eslint",
 		"test": "sh ./scripts/e2e.sh"
@@ -76,6 +83,7 @@
 		"@stylistic/eslint-plugin": "^2.9.0",
 		"@types/mocha": "^10.0.6",
 		"@types/node": "^22",
+		"esbuild": "^0.27.4",
 		"eslint": "^9.13.0",
 		"mocha": "^10.3.0",
 		"typescript": "^5.9.2",

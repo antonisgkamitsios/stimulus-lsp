@@ -5,9 +5,7 @@
 		"lib": [
 			"ES2024"
 		],
-		"outDir": "out",
-		"rootDir": "src",
-		"sourceMap": true,
+    "esModuleInterop": true,
 		"strict": true,
 		"paths": {
 			"shared/*": ["../shared/src/*"]

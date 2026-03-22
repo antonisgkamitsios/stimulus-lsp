@@ -23,7 +23,7 @@ jobs:
         uses: ./.github/actions/build
 
       - name: Compile project
-        run: npm run compile
+        run: pnpm compile
 
       - name: Cache VS code
         uses: actions/cache@v4
@@ -34,7 +34,7 @@ jobs:
             vscode-${{ runner.os }}-
 
       - name: Test server
-        run: cd ./server && npm run test
+        run: cd ./server && pnpm test
 
       - name: Install xvfb (Linux only)
         if: runner.os == 'Linux'
@@ -42,8 +42,8 @@ jobs:
 
       - name: E2E test (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npm run test
+        run: xvfb-run -a pnpm test
 
       - name: E2E test (Windows/macos)
         if: runner.os != 'Linux'
-        run: npm run test
+        run: pnpm test
