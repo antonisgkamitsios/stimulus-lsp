@@ -5,7 +5,6 @@ import {
   openDoc,
   resetSettings,
   deleteController,
-  triggerAutoComplete,
   updateSettings,
   waitForCompletions,
   createController,
@@ -27,7 +26,7 @@ describe('data-controller-target completion', () => {
       const docUri = await openDoc('completion/dataTarget.html');
 
       let expectedCompletionTargets = ['firstTarget', 'secondTarget'];
-      let actualCompletionTargets = await triggerAutoComplete(docUri, position);
+      let actualCompletionTargets = await waitForCompletions(docUri, position, (c) => c.includes('firstTarget'));
 
       assert.deepStrictEqual(actualCompletionTargets.sort(), expectedCompletionTargets.sort());
 
