@@ -1,5 +1,5 @@
 {
-	"name": "stimulus-lsp",
+	"name": "stimulusp",
 	"description": "A simple stimulus lsp",
 	"author": "Antonis Gkamitsios",
 	"license": "MIT",
@@ -26,7 +26,7 @@
 			"type": "object",
 			"title": "Stimulus LSP configuration",
 			"properties": {
-				"stimulus.controllersDirs": {
+				"stimulusp.controllersDirs": {
 					"scope": "resource",
 					"type": "array",
 					"default": [
@@ -34,7 +34,7 @@
 					],
 					"description": "Paths to your Stimulus controllers directory"
 				},
-				"stimulus.activationLanguages": {
+				"stimulusp.activationLanguages": {
 					"scope": "window",
 					"type": "array",
 					"default": [
@@ -43,7 +43,7 @@
 					"description": "Languages that Stimulus LSP will activate on.",
 					"restartRequired": true
 				},
-				"stimulus.fileWatchPattern": {
+				"stimulusp.fileWatchPattern": {
 					"scope": "resource",
 					"type": "string",
 					"default": "**/*_controller.{ts,js}",

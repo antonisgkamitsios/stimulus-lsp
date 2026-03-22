@@ -5,7 +5,7 @@ import { Connection } from 'vscode-languageserver';
 import { ControllerIdentifier, ControllerInfo, ControllerPath } from './types';
 import { controllerIdentifierFromPath } from './utils';
 import { Glob } from './glob';
-import { StimulusSettings } from 'shared';
+import { StimulusSettings,LSP_ID } from 'shared';
 import { ControllerParser } from './controllerParser';
 
 export class ControllersStore {
@@ -92,7 +92,7 @@ export class ControllersStore {
     try {
       if (!fs.existsSync(fullPathToControllersDir)) {
         this.connection.console.log(`[readControllers] Directory does not exist: ${fullPathToControllersDir}.
-          Perhaps you want to update the "stimulus.controllersDirs": [...] in your vscode settings`);
+          Perhaps you want to update the "${LSP_ID}.controllersDirs": [...] in your vscode settings`);
         this.hasErrored = true;
         return [];
       }
