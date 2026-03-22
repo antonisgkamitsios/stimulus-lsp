@@ -23,6 +23,6 @@ jobs:
         run: pnpm compile
 
       - name: Publish
-        run: pnpm publish
+        run: pnpm publish-extension
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
