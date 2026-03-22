@@ -1,5 +1,3 @@
-import * as path from 'path';
-
 import {
   createConnection,
   TextDocuments,
@@ -7,7 +5,6 @@ import {
   InitializeParams,
   DidChangeConfigurationNotification,
   CompletionItem,
-  CompletionItemKind,
   TextDocumentPositionParams,
   TextDocumentSyncKind,
   InitializeResult,
@@ -18,6 +15,7 @@ import {
   CompletionParams,
   DidChangeWatchedFilesNotification,
   Disposable,
+  CompletionItemKind,
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -25,12 +23,14 @@ import { StimulusSettings, LSP_ID, defaultSettings } from 'shared';
 import {
   controllerIdentifierFromPath,
   getFullAndRelativeControllerPath,
-  getFullControllersPaths,
-  normalizePath,
+  settingsEqual,
   stripFilePrefix,
 } from './utils';
 import { ControllersStore } from './controllersStore';
 import { Glob } from './glob';
+import { ControllerCompletionProvider } from './controllerCompletionProvider';
+import { getLanguageService } from 'vscode-html-languageservice';
+import { ControllerDefinitionProvider } from './controllerDefinitionProvider';
 
 let globalSettings: StimulusSettings = defaultSettings;
 let cachedSettings: StimulusSettings | undefined;
@@ -41,16 +41,15 @@ const documents = new TextDocuments(TextDocument);
 let workspaceRoot: string;
 
 const controllersStore = new ControllersStore(connection);
-
-function settingsEqual(cached: StimulusSettings | undefined, settings: StimulusSettings): boolean {
-  if (!cached) return false;
-
-  return JSON.stringify(cached) === JSON.stringify(settings);
-}
+const controllerCompletionProvider = new ControllerCompletionProvider(LSP_ID, controllersStore);
+const controllerCompletionService = getLanguageService({
+  customDataProviders: [controllerCompletionProvider],
+  useDefaultDataProvider: false,
+});
+const controllerDefinitionProvider = new ControllerDefinitionProvider(controllersStore);
 
 async function updateControllers(shouldClear = false) {
   const settings = await getSettings();
-  connection.console.log(settings.activationLanguages.join(', '));
 
   if (settingsEqual(cachedSettings, settings)) return;
 
@@ -103,7 +102,7 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that this server supports code completion.
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: ['"', "'"],
+        triggerCharacters: ['"', "'", '#', '>', '@', ':'],
       },
       // Tell the client that this server supports go to definition.
       definitionProvider: true,
@@ -158,8 +157,6 @@ connection.onDidChangeConfiguration(async (change) => {
     globalSettings = change.settings.stimulus || defaultSettings;
   }
 
-  connection.console.log('conf change fired');
-
   await updateFileWatcher();
 
   await updateControllers(true);
@@ -179,11 +176,13 @@ connection.onDidChangeWatchedFiles(async (change) => {
 
   if (hasControllerChanges) {
     changes.forEach((change) => {
-      const fullControllersPaths = getFullControllersPaths(workspaceRoot, settings.controllersDirs);
+      const fullPathToControllersDirs = settings.controllersDirs.map((controllerDir) =>
+        controllersStore.getFullPathToControllersDir(controllerDir),
+      );
 
       const [fullControllerPath, relativeControllerPath] = getFullAndRelativeControllerPath(
         change.uri,
-        fullControllersPaths,
+        fullPathToControllersDirs,
       );
       if (!relativeControllerPath) {
         return;
@@ -193,10 +192,8 @@ connection.onDidChangeWatchedFiles(async (change) => {
 
       switch (change.type) {
         case FileChangeType.Created:
-          controllersStore.addController(fullControllerPath, controllerIdentifier);
-
-          break;
         case FileChangeType.Changed:
+          controllersStore.addController(fullControllerPath, controllerIdentifier);
           break;
         case FileChangeType.Deleted:
           controllersStore.deleteController(fullControllerPath);
@@ -209,15 +206,15 @@ connection.onDidChangeWatchedFiles(async (change) => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent((_change) => {
-  connection.console.log('onDidChangeContent');
+  // connection.console.log('onDidChangeContent');
   // Diagnostics will be provided through the diagnostics endpoint
 });
 
 // This handler provides the initial list of the completion items.
-connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<CompletionItem[]> => {
+connection.onCompletion((textDocumentPosition: CompletionParams) => {
   const document = documents.get(textDocumentPosition.textDocument.uri);
   if (!document) {
-    return [];
+    return null;
   }
 
   const text = document.getText();
@@ -226,25 +223,20 @@ connection.onCompletion(async (textDocumentPosition: CompletionParams): Promise<
   // Get text from the beginning of the line to current position
   const lineStart = text.lastIndexOf('\n', offset) + 1;
   const lineText = text.substring(lineStart, offset);
+  controllerCompletionProvider.currentLineText = lineText;
 
-  const dataControllerMatch = lineText.match(/data-controller=["']([a-z0-9-]*)$/i);
+  const items = controllerCompletionService
+    .doComplete(document, textDocumentPosition.position, controllerCompletionService.parseHTMLDocument(document))
+    .items.map((item) => {
+      const kind =
+        item.label === 'data-controller' || item.label === 'data-action'
+          ? CompletionItemKind.Value
+          : CompletionItemKind.Class;
 
-  if (!dataControllerMatch) {
-    return [];
-  }
+      return { ...item, kind };
+    });
 
-  // Create completion items from controllers
-  const completions: CompletionItem[] = [];
-  controllersStore.forEach((controllerInfo, controllerPath) =>
-    completions.push({
-      label: controllerInfo.identifier,
-      kind: CompletionItemKind.Class,
-      detail: path.relative(workspaceRoot, controllerPath),
-      insertText: controllerInfo.identifier,
-    }),
-  );
-
-  return completions;
+  return { isIncomplete: true, items };
 });
 
 // This handler resolves additional information for the item selected in
@@ -254,7 +246,7 @@ connection.onCompletionResolve((item: CompletionItem): CompletionItem => {
 });
 
 // This handler provides the definition (go to definition) for a symbol
-connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams): Promise<Location[] | null> => {
+connection.onDefinition((textDocumentPosition: TextDocumentPositionParams): Location[] | null => {
   const document = documents.get(textDocumentPosition.textDocument.uri);
   if (!document) {
     connection.console.log('[Definition] No document found');
@@ -270,50 +262,7 @@ connection.onDefinition(async (textDocumentPosition: TextDocumentPositionParams)
   const lineText = text.substring(lineStart, lineEnd === -1 ? text.length : lineEnd);
   const posInLine = offset - lineStart;
 
-  // Check if we're in a data-controller attribute
-  if (!lineText.includes('data-controller')) {
-    connection.console.log('[Definition] Not in data-controller attribute');
-    return null;
-  }
-
-  // Extract word at cursor
-  let wordStart = posInLine;
-  let wordEnd = posInLine;
-
-  // Find word boundaries
-  while (wordStart > 0 && /[a-z0-9-]/i.test(lineText[wordStart - 1])) {
-    wordStart--;
-  }
-  while (wordEnd < lineText.length && /[a-z0-9-]/i.test(lineText[wordEnd])) {
-    wordEnd++;
-  }
-
-  const word = lineText.substring(wordStart, wordEnd);
-
-  if (!word || word.length === 0) {
-    return null;
-  }
-
-  // Find the controller file(s)
-  const controllerPaths = controllersStore.getControllerPathByIdentifier(word);
-  if (controllerPaths.length === 0) {
-    return null;
-  }
-
-  const locations = controllerPaths.map((path) => {
-    const normalizedPath = normalizePath(path);
-    const fileUri = normalizedPath.startsWith('/') ? 'file://' + normalizedPath : 'file:///' + normalizedPath;
-
-    return {
-      uri: fileUri,
-      range: {
-        start: { line: 0, character: 0 },
-        end: { line: 0, character: 0 },
-      },
-    };
-  });
-
-  return locations;
+  return controllerDefinitionProvider.doProvide(lineText, posInLine);
 });
 
 connection.languages.diagnostics.on(async (_params) => {

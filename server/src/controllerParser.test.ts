@@ -36,8 +36,8 @@ describe('ControllerParser', () => {
           {
             name: 'onlyYou',
             loc: {
-              start: { line: 12, character: 2 },
-              end: { line: 12, character: 9 },
+              start: { line: 11, character: 2 },
+              end: { line: 11, character: 9 },
             },
           },
         ]),
@@ -60,6 +60,8 @@ describe('ControllerParser', () => {
           interval: Number,
           params: Object,
         };
+
+        static outlets = ['user-status', 'admin--user-status']
       }
     `;
 
@@ -73,15 +75,15 @@ describe('ControllerParser', () => {
             {
               name: 'firstTarget',
               loc: {
-                start: { line: 5, character: 20 },
-                end: { line: 5, character: 33 },
+                start: { line: 4, character: 20 },
+                end: { line: 4, character: 33 },
               },
             },
             {
               name: 'secondTarget',
               loc: {
-                start: { line: 5, character: 35 },
-                end: { line: 5, character: 49 },
+                start: { line: 4, character: 35 },
+                end: { line: 4, character: 49 },
               },
             },
           ]),
@@ -96,15 +98,15 @@ describe('ControllerParser', () => {
             {
               name: 'loading',
               loc: {
-                start: { line: 7, character: 20 },
-                end: { line: 7, character: 29 },
+                start: { line: 6, character: 20 },
+                end: { line: 6, character: 29 },
               },
             },
             {
               name: 'no-results',
               loc: {
-                start: { line: 7, character: 31 },
-                end: { line: 7, character: 42 },
+                start: { line: 6, character: 31 },
+                end: { line: 6, character: 42 },
               },
             },
           ]),
@@ -120,22 +122,46 @@ describe('ControllerParser', () => {
             {
               name: 'content-type',
               loc: {
-                start: { line: 10, character: 4 },
-                end: { line: 10, character: 15 },
+                start: { line: 9, character: 4 },
+                end: { line: 9, character: 15 },
               },
             },
             {
               name: 'interval',
               loc: {
-                start: { line: 11, character: 4 },
-                end: { line: 11, character: 12 },
+                start: { line: 10, character: 4 },
+                end: { line: 10, character: 12 },
               },
             },
             {
               name: 'params',
               loc: {
-                start: { line: 12, character: 4 },
-                end: { line: 12, character: 10 },
+                start: { line: 11, character: 4 },
+                end: { line: 11, character: 10 },
+              },
+            },
+          ]),
+        );
+      });
+    });
+
+    describe('outlets', () => {
+      it('returns the correct outlets', () => {
+        expect(parser.outlets).toHaveLength(2);
+        expect(parser.outlets).toEqual(
+          expect.arrayContaining([
+            {
+              name: 'user-status',
+              loc: {
+                start: { line: 14, character: 20 },
+                end: { line: 14, character: 33 },
+              },
+            },
+            {
+              name: 'admin--user-status',
+              loc: {
+                start: { line: 14, character: 35 },
+                end: { line: 14, character: 55 },
               },
             },
           ]),

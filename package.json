@@ -50,7 +50,14 @@
 					"description": "Glob pattern for files to watch for controller changes"
 				}
 			}
-		}
+		},
+		"htmlLanguageParticipants": [
+			{
+				"languageId": "html",
+				"autoInsert": true
+			}
+		]
+		
 	},
 	"workspaces": [
 		"client",

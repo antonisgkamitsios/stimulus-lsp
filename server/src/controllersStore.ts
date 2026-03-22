@@ -2,19 +2,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { Connection } from 'vscode-languageserver';
-import { Class, ControllerIdentifier, ControllerPath, Method, Target, Value } from './types';
+import { ControllerIdentifier, ControllerInfo, ControllerPath } from './types';
 import { controllerIdentifierFromPath } from './utils';
 import { Glob } from './glob';
 import { StimulusSettings } from 'shared';
 import { ControllerParser } from './controllerParser';
-
-interface ControllerInfo {
-  identifier: string;
-  methods: Method[];
-  values: Value[];
-  targets: Target[];
-  classes: Class[];
-}
 
 export class ControllersStore {
   //  by design when we are going to access the workspaceRoot is going to be set by the `onInitialize` method
@@ -33,7 +25,7 @@ export class ControllersStore {
     const glob = new Glob(settings.fileWatchPattern);
 
     settings.controllersDirs.forEach((controllersDir) => {
-      this.#parseController(controllersDir, glob);
+      this.#parseControllers(controllersDir, glob);
     });
   }
 
@@ -50,60 +42,78 @@ export class ControllersStore {
     this.#controllers.clear();
   }
 
-  addController(path: ControllerPath, identifier: ControllerIdentifier) {
-    const controllerSourceCode = fs.readFileSync(path, 'utf-8');
-    const parser = ControllerParser.parse(controllerSourceCode, path);
+  addController(controllerPath: ControllerPath, identifier: ControllerIdentifier) {
+    const controllerSourceCode = fs.readFileSync(controllerPath, 'utf-8');
+    const parser = ControllerParser.parse(controllerSourceCode, controllerPath);
     const controllerInfo: ControllerInfo = {
       identifier: identifier,
+      fullPath: controllerPath,
+      relativePath: path.relative(this.workspaceRoot, controllerPath),
       methods: parser.methods,
       classes: parser.classes,
       targets: parser.targets,
       values: parser.values,
+      outlets: parser.outlets,
     };
-    this.#controllers.set(path, controllerInfo);
+    this.#controllers.set(controllerPath, controllerInfo);
   }
 
   deleteController(key: ControllerPath) {
     this.#controllers.delete(key);
   }
 
-  getControllerPathByIdentifier(identifier: ControllerIdentifier): ControllerPath[] {
-    const controllerPaths: ControllerPath[] = [];
-    this.#controllers.forEach((info, path) => {
+  getControllerInfosByIdentifier(identifier: ControllerIdentifier): ControllerInfo[] {
+    const controllerInfos: ControllerInfo[] = [];
+
+    this.#controllers.forEach((info) => {
       if (info.identifier == identifier) {
-        controllerPaths.push(path);
+        controllerInfos.push(info);
       }
     });
 
-    return controllerPaths;
+    return controllerInfos;
   }
 
-  #parseController(controllersDir: string, glob: Glob) {
-    const fullPath = path.isAbsolute(controllersDir) ? controllersDir : path.join(this.workspaceRoot, controllersDir);
+  getController(path: string): ControllerInfo | undefined {
+    return this.#controllers.get(path);
+  }
+
+  get controllerInfos(): ControllerInfo[] {
+    return [...this.#controllers.values()];
+  }
+
+  getFullPathToControllersDir(controllersDir: string): string {
+    return path.isAbsolute(controllersDir) ? controllersDir : path.join(this.workspaceRoot, controllersDir);
+  }
+
+  #parseControllers(controllersDir: string, glob: Glob) {
+    const fullPathToControllersDir = this.getFullPathToControllersDir(controllersDir);
 
     try {
-      if (!fs.existsSync(fullPath)) {
-        this.connection.console.log(`[readControllers] Directory does not exist: ${fullPath}`);
+      if (!fs.existsSync(fullPathToControllersDir)) {
+        this.connection.console.log(`[readControllers] Directory does not exist: ${fullPathToControllersDir}.
+          Perhaps you want to update the "stimulus.controllersDirs": [...] in your vscode settings`);
+        this.hasErrored = true;
         return [];
       }
 
       const walkDir = (dir: string) => {
         const files = fs.readdirSync(dir);
         for (const file of files) {
-          const fullFilePath = path.join(dir, file);
-          const stat = fs.statSync(fullFilePath);
+          const fullControllerPath = path.join(dir, file);
+          const stat = fs.statSync(fullControllerPath);
 
           if (stat.isDirectory()) {
-            walkDir(fullFilePath);
+            walkDir(fullControllerPath);
           } else if (glob.matchesSuffix(file)) {
-            const relativePath = path.relative(fullPath, fullFilePath);
+            const relativePath = path.relative(fullPathToControllersDir, fullControllerPath);
             const controllerIdentifier = controllerIdentifierFromPath(relativePath, glob.base);
-            this.addController(fullFilePath, controllerIdentifier);
+            this.addController(fullControllerPath, controllerIdentifier);
           }
         }
       };
 
-      walkDir(fullPath);
+      walkDir(fullPathToControllersDir);
     } catch (error) {
       this.connection.console.log(`[readControllers] Error reading controllers: ${error}`);
       this.hasErrored = true;

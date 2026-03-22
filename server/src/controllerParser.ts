@@ -6,7 +6,7 @@ import type { ParserOptions } from '@typescript-eslint/types';
 import type { AST } from '@typescript-eslint/typescript-estree';
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import { dasherize } from './utils';
-import { Class, Method, Target, Value, WithNameAndLocation } from './types';
+import { Class, Method, Outlet, Target, Value, WithNameAndLocation } from './types';
 
 export class ControllerParser {
   #sourceCode: string;
@@ -16,6 +16,7 @@ export class ControllerParser {
   targets: Target[];
   values: Value[];
   classes: Class[];
+  outlets: Outlet[];
 
   private parser = ESLintParser;
   private readonly parserOptions: ParserOptions = {
@@ -31,10 +32,16 @@ export class ControllerParser {
     this.#sourceCode = sourceCode;
     this.#filePath = filePath;
 
+    // method name is as is in js
     this.methods = [];
+    // target name is as is in js
     this.targets = [];
+    // value name is dasherized
     this.values = [];
+    // class name is dasherized
     this.classes = [];
+    // outlet name is as is in js (dasherized)
+    this.outlets = [];
   }
 
   static parse(sourceCode: string, filePath: string): ControllerParser {
@@ -98,7 +105,7 @@ export class ControllerParser {
   }
 
   #parseArrayExpression(expressionName: string, elements: (Acorn.Expression | Acorn.SpreadElement | null)[]) {
-    if (expressionName !== 'targets' && expressionName !== 'classes') return;
+    if (expressionName !== 'targets' && expressionName !== 'classes' && expressionName !== 'outlets') return;
 
     elements.forEach((el) => {
       if (!el) return;
@@ -106,7 +113,7 @@ export class ControllerParser {
 
       if (typeof el.value !== 'string') return;
 
-      const identifier: Class | Target = {
+      const identifier: Class | Target | Outlet = {
         name: el.value,
       };
       this.#addLocToProperty(identifier, el.loc);
@@ -116,6 +123,8 @@ export class ControllerParser {
       } else if (expressionName === 'classes') {
         identifier.name = dasherize(identifier.name);
         this.classes.push(identifier);
+      } else if (expressionName === 'outlets') {
+        this.outlets.push(identifier);
       }
     });
   }
@@ -145,11 +154,11 @@ export class ControllerParser {
 
     obj.loc = {
       start: {
-        line: loc.start.line,
+        line: loc.start.line - 1,
         character: loc.start.column,
       },
       end: {
-        line: loc.end.line,
+        line: loc.end.line - 1,
         character: loc.end.column,
       },
     };

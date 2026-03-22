@@ -55,8 +55,8 @@ export async function resetSettings() {
   }
 }
 
-export function createController(path: string) {
-  fs.writeFileSync(getDocPath(path), '');
+export function createController(path: string, content = '') {
+  fs.writeFileSync(getDocPath(path), content);
 }
 
 export function deleteController(path: string) {
@@ -71,6 +71,27 @@ export function getDocUri(p: string) {
   return vscode.Uri.file(getDocPath(p));
 }
 
+export async function waitForCompletions(
+  docUri: vscode.Uri,
+  position: vscode.Position,
+  predicate: (completions: string[]) => boolean,
+): Promise<string[]> {
+  return waitFor(docUri, position, triggerAutoComplete, predicate);
+}
+
+export async function triggerAutoComplete(docUri: vscode.Uri, position: vscode.Position): Promise<string[]> {
+  // Executing the command `vscode.executeCompletionItemProvider` to simulate triggering completion
+  const actualCompletionList = (await vscode.commands.executeCommand(
+    'vscode.executeCompletionItemProvider',
+    docUri,
+    position,
+  )) as vscode.CompletionList;
+
+  return actualCompletionList.items
+    .filter((item) => item.kind !== vscode.CompletionItemKind.Text)
+    .map((item) => item.label.toString());
+}
+
 export async function waitFor<T>(
   docUri: vscode.Uri,
   position: vscode.Position,
@@ -80,8 +101,9 @@ export async function waitFor<T>(
 ): Promise<T> {
   const start = Date.now();
 
+  let res: T;
   while (Date.now() - start < timeout) {
-    const res: T = await fn(docUri, position);
+    res = await fn(docUri, position);
 
     if (predicate(res)) {
       return res;
@@ -90,7 +112,8 @@ export async function waitFor<T>(
     await sleep(POLL_TIMEOUT);
   }
 
-  throw new Error('Timed out waiting for function to match predicate');
+  // @ts-expect-error its not used before initialized, whe while loop will always happen once
+  throw new Error(`Timed out waiting for function to match predicate.\nThe returned values were: \n${res}`);
 }
 
 async function sleep(ms: number) {

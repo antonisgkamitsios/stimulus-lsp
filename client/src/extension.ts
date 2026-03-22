@@ -66,6 +66,22 @@ export function activate(context: ExtensionContext) {
 
   // Start the client. This will also launch the server
   client.start();
+  context.subscriptions.push(
+    workspace.onDidChangeTextDocument((event) => {
+      const change = event.contentChanges[0];
+      if (change.text.length > 1) return;
+
+      const editor = window.activeTextEditor;
+      if (!editor || event.document !== editor.document) return;
+
+      const position = editor.selection.active;
+      const lineText = event.document.lineAt(position).text.substring(0, position.character);
+
+      if (lineText.match(/data-(controller|action|[a-z0-9-]+-target)=["'][^"']*$/i)) {
+        commands.executeCommand('editor.action.triggerSuggest');
+      }
+    }),
+  );
   outputChannel.appendLine('Stimulus LSP Server started');
 }
 
