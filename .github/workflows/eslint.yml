@@ -17,7 +17,7 @@ jobs:
         uses: ./.github/actions/build
 
       - name: Lint
-        run: npm run lint -- -f json -o ./eslint_res.txt
+        run: pnpm lint -f json -o ./eslint_res.txt
 
       - name: Create annotations
         run: |

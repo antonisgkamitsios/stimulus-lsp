@@ -17,7 +17,7 @@
 		"vscode-languageclient": "^9.0.1"
 	},
 	"scripts": {
-		"compile": "npm run typecheck && node esbuild.js",
+		"compile": "pnpm typecheck && node esbuild.js",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {

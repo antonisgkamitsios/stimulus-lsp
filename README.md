@@ -67,17 +67,17 @@ We provide a smart jump to definition for all the cases above. and we try to jum
 Build and install the extension:
 
 ```bash
-npm install
-npm run compile
+pnpm install
+pnpm compile
 ```
 
 Run e2e test:
 ```bash
-npm run test
+pnpm run test
 ```
 
 Run server tests:
 ```bash
 cd server
-npm run test
+pnpm run test
 ```
