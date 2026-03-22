@@ -2,6 +2,7 @@ import { Location } from 'vscode-languageserver/node';
 import { ControllersStore } from './controllersStore';
 import { normalizePath } from './utils';
 import { ControllerInfo, Location as ControllerLocation } from './types';
+import { ActionParser } from './actionParser';
 
 type LocFunc = (info: ControllerInfo, attributeName?: string) => ControllerLocation | undefined;
 
@@ -42,6 +43,16 @@ export class ControllerDefinitionProvider {
       return this.#getIdentifierLocations(
         dataTargetIdentifier,
         (info) => info.targets.find((t) => t.name === value)?.loc,
+      );
+    }
+
+    if (attribute === 'data-action') {
+      const parsedAction = new ActionParser(value);
+      if (!parsedAction.valid || !parsedAction.identifier) return null;
+
+      return this.#getIdentifierLocations(
+        parsedAction.identifier,
+        (info) => info.methods.find((m) => m.name === parsedAction.method)?.loc,
       );
     }
 
