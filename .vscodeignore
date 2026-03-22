@@ -9,3 +9,5 @@ server/src/**
 **/tsconfig*.json
 **/*.map
 .gitignore
+
+!server/node_modules/vscode-html-languageservice/**
